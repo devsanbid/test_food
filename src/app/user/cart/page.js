@@ -1,0 +1,321 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ShoppingCart, Plus, Minus, Trash2, ArrowLeft, CreditCard, MapPin, Clock, Tag } from 'lucide-react';
+import { getCurrentUser } from '@/actions/authActions';
+import { getCart, updateQuantity, removeFromCart, applyCoupon, removeCoupon } from '@/actions/cartActions';
+
+export default function CartPage() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [cartData, setCartData] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
+  const [couponCode, setCouponCode] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(2.50);
+  const [error, setError] = useState(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const initializePage = async () => {
+      try {
+        const userData = await getCurrentUser();
+        if (!userData || userData.role !== 'user') {
+          router.push('/login');
+          return;
+        }
+        setUser(userData);
+        
+        // Fetch cart data
+        const cartResponse = await getCart();
+        if (cartResponse.success) {
+          setCartData(cartResponse.data.cart);
+          setCartItems(cartResponse.data.cart.items || []);
+          setCouponCode(cartResponse.data.cart.couponCode || '');
+          setDiscount(cartResponse.data.cart.discount || 0);
+          setDeliveryFee(cartResponse.data.cart.deliveryFee || 2.50);
+        }
+      } catch (error) {
+        console.error('Page initialization failed:', error);
+        if (error.message.includes('Unauthorized')) {
+          router.push('/login');
+        } else {
+          setError('Failed to load cart data');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    initializePage();
+  }, [router]);
+
+  const handleUpdateQuantity = async (itemIndex, newQuantity) => {
+    if (newQuantity <= 0) {
+      handleRemoveItem(itemIndex);
+      return;
+    }
+    
+    try {
+      const response = await updateQuantity(itemIndex, newQuantity);
+      if (response.success) {
+        setCartData(response.data.cart);
+        setCartItems(response.data.cart.items || []);
+      }
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
+      setError('Failed to update item quantity');
+    }
+  };
+
+  const handleRemoveItem = async (itemIndex) => {
+    try {
+      const response = await removeFromCart(itemIndex);
+      if (response.success) {
+        setCartData(response.data.cart);
+        setCartItems(response.data.cart.items || []);
+      }
+    } catch (error) {
+      console.error('Failed to remove item:', error);
+      setError('Failed to remove item from cart');
+    }
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setError('Please enter a coupon code');
+      return;
+    }
+    
+    try {
+      const response = await applyCoupon(couponCode.trim());
+      if (response.success) {
+        setCartData(response.data.cart);
+        setCartItems(response.data.cart.items || []);
+        setDiscount(response.data.cart.discount || 0);
+        setError(null);
+      }
+    } catch (error) {
+      console.error('Failed to apply coupon:', error);
+      setError(error.message || 'Invalid coupon code');
+    }
+  };
+  
+  const handleRemoveCoupon = async () => {
+    try {
+      const response = await removeCoupon();
+      if (response.success) {
+        setCartData(response.data.cart);
+        setCartItems(response.data.cart.items || []);
+        setDiscount(0);
+        setCouponCode('');
+        setError(null);
+      }
+    } catch (error) {
+      console.error('Failed to remove coupon:', error);
+      setError('Failed to remove coupon');
+    }
+  };
+
+  const subtotal = cartData?.subtotal || 0;
+  const discountAmount = cartData?.discount || 0;
+  const tax = (subtotal - discountAmount) * 0.08;
+  const total = subtotal - discountAmount + deliveryFee + tax;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (error && !cartData) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-xl mb-4">{error}</div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-orange-500 hover:bg-orange-600 px-6 py-3 rounded-lg font-semibold transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8">
+        <div className="flex items-center mb-8">
+          <button 
+            onClick={() => router.back()}
+            className="mr-4 p-2 hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-3xl font-bold flex items-center">
+            <ShoppingCart className="mr-3" />
+            Your Cart ({cartItems.length} items)
+          </h1>
+        </div>
+        
+        {error && (
+          <div className="bg-red-500/20 border border-red-500 text-red-500 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+
+        {cartItems.length === 0 ? (
+          <div className="text-center py-16">
+            <ShoppingCart className="w-24 h-24 mx-auto mb-4 text-gray-600" />
+            <h2 className="text-2xl font-semibold mb-2">Your cart is empty</h2>
+            <p className="text-gray-400 mb-6">Add some delicious items to get started!</p>
+            <button 
+              onClick={() => router.push('/user/foodlist')}
+              className="bg-orange-500 hover:bg-orange-600 px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
+              Browse Menu
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            <div className="lg:col-span-2 order-2 lg:order-1">
+              <div className="space-y-4">
+                {cartItems.map((item, index) => (
+                  <div key={index} className="bg-gray-800/80 backdrop-blur-sm rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <img 
+                      src={item.image || '/images/default-food.jpg'} 
+                      alt={item.name}
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg">{item.name}</h3>
+                      <p className="text-gray-400 text-sm">{cartData?.restaurantName || 'Restaurant'}</p>
+                      <p className="text-orange-500 font-semibold">${item.price.toFixed(2)}</p>
+                      {item.customizations && item.customizations.length > 0 && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          {item.customizations.map((custom, idx) => (
+                            <span key={idx}>{custom.name}: {custom.value} </span>
+                          ))}
+                        </div>
+                      )}
+                      {item.specialInstructions && (
+                        <p className="text-xs text-gray-400 mt-1">Note: {item.specialInstructions}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-3 mt-2 sm:mt-0">
+                      <button 
+                        onClick={() => handleUpdateQuantity(index, item.quantity - 1)}
+                        className="p-1 hover:bg-gray-700 rounded transition-colors"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                      <button 
+                        onClick={() => handleUpdateQuantity(index, item.quantity + 1)}
+                        className="p-1 hover:bg-gray-700 rounded transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="text-left sm:text-right mt-2 sm:mt-0">
+                      <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
+                      <button 
+                        onClick={() => handleRemoveItem(index)}
+                        className="text-red-500 hover:text-red-400 mt-2 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg p-6 h-fit order-1 lg:order-2">
+              <h2 className="text-xl font-semibold mb-6">Order Summary</h2>
+              
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>${subtotal.toFixed(2)}</span>
+                </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-500">
+                    <span>Discount ({(discount * 100).toFixed(0)}%)</span>
+                    <span>-${discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span>Delivery Fee</span>
+                  <span>${deliveryFee.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tax</span>
+                  <span>${tax.toFixed(2)}</span>
+                </div>
+                <hr className="border-gray-700" />
+                <div className="flex justify-between text-lg font-semibold">
+                  <span>Total</span>
+                  <span>${total.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="Enter coupon code"
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:border-orange-500"
+                  />
+                  <button 
+                    onClick={handleApplyCoupon}
+                    className="bg-orange-500 hover:bg-orange-600 px-6 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    Apply
+                  </button>
+                </div>
+                {discount > 0 && (
+                  <div className="flex items-center justify-between text-green-500 mt-2">
+                    <span>Coupon Applied!</span>
+                    <button 
+                      onClick={handleRemoveCoupon}
+                      className="text-red-500 hover:text-red-400"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <button 
+                  onClick={() => router.push('/user/checkout')}
+                  className="w-full bg-orange-500 hover:bg-orange-600 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center"
+                >
+                  <CreditCard className="mr-2 w-5 h-5" />
+                  Proceed to Checkout
+                </button>
+                <button 
+                  onClick={() => router.push('/user/foodlist')}
+                  className="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-lg font-semibold transition-colors"
+                >
+                  Continue Shopping
+                </button>
+              </div>
+
+              <div className="mt-6 p-4 bg-gray-700 rounded-lg">
+                <div className="flex items-center text-sm text-gray-300">
+                  <Clock className="w-4 h-4 mr-2" />
+                  <span>Estimated delivery: 25-35 mins</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+    </div>
+  );
+}
