@@ -127,13 +127,11 @@ export default function YumNavbar() {
           icon={Users} 
           label="Customer" 
           hasSubmenu={true}
-          isExpanded={expandedSections.customers}
+          isExpanded={expandedSections.customer}
           onClick={() => toggleSection('customer')}
         >
-          <SubMenuItem icon={Users} label="Customers List" href="/admin/customers/list" />
-          <SubMenuItem icon={User} label="Customer Details" href="/admin/customers/details" />
-          <SubMenuItem icon={Plus} label="Add Customer" href="/admin/customers/add" />
-          <SubMenuItem icon={Edit3} label="Edit Customer" href="/admin/customers/edit" />
+          <SubMenuItem icon={Users} label="Customers List" href="/admin/customer" />
+          <SubMenuItem icon={Plus} label="Add Customer" href="/admin/customer/add" />
         </NavItem>
 
         {/* Restaurants */}
@@ -169,13 +167,11 @@ export default function YumNavbar() {
           icon={UserCheck} 
           label="Seller" 
           hasSubmenu={true}
-          isExpanded={expandedSections.sellers}
+          isExpanded={expandedSections.seller}
           onClick={() => toggleSection('seller')}
         >
-          <SubMenuItem icon={UserCheck} label="Sellers List" href="/admin/seller/list" />
-          <SubMenuItem icon={User} label="Seller Details" href="/admin/seller/details" />
+          <SubMenuItem icon={UserCheck} label="Sellers List" href="/admin/seller" />
           <SubMenuItem icon={Plus} label="Add Seller" href="/admin/seller/add" />
-          <SubMenuItem icon={Edit3} label="Edit Seller" href="/admin/seller/edit" />
         </NavItem>
       </div>
     </div>
