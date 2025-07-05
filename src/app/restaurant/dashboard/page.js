@@ -21,6 +21,7 @@ import {
   Percent
 } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+import { checkRestaurantProfileComplete, ProfileIncompleteModal } from '@/lib/restaurantProfileUtils';
 
 export default function RestaurantDashboard() {
   const [user, setUser] = useState(null);
@@ -35,7 +36,128 @@ export default function RestaurantDashboard() {
   });
   const [recentOrders, setRecentOrders] = useState([]);
   const [topDishes, setTopDishes] = useState([]);
+  const [error, setError] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [missingFields, setMissingFields] = useState([]);
   const router = useRouter();
+
+  // API fetch functions
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/restaurant/stats');
+      const data = await response.json();
+      if (data.success) {
+        setStats({
+          totalOrders: data.stats.orders.total,
+          totalRevenue: data.stats.revenue.total,
+          averageRating: data.stats.rating.average,
+          activeMenuItems: stats.activeMenuItems, // Will be updated by fetchMenuStats
+          pendingOrders: data.stats.orders.pending,
+          todayOrders: data.stats.orders.today
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      setError('Failed to load statistics');
+    }
+  };
+
+  const fetchRecentOrders = async () => {
+    try {
+      const response = await fetch('/api/restaurant/recent-orders');
+      const data = await response.json();
+      if (data.success) {
+        const formattedOrders = data.orders.map(order => ({
+          id: order.orderNumber || order._id,
+          customerName: `${order.user.firstName} ${order.user.lastName}`,
+          items: order.items.map(item => item.name),
+          total: order.totalAmount,
+          status: order.status,
+          orderTime: getTimeAgo(order.createdAt),
+          estimatedTime: getEstimatedTime(order.status, order.createdAt)
+        }));
+        setRecentOrders(formattedOrders);
+      }
+    } catch (error) {
+      console.error('Error fetching recent orders:', error);
+      setError('Failed to load recent orders');
+    }
+  };
+
+  const fetchTopDishes = async () => {
+    try {
+      const response = await fetch('/api/restaurant/top-dishes');
+      const data = await response.json();
+      if (data.success) {
+        const formattedDishes = data.dishes.map((dish, index) => ({
+          id: dish._id,
+          name: dish.name,
+          orders: dish.totalOrdered,
+          revenue: dish.revenue,
+          rating: 4.5, // Default rating, can be enhanced later
+          image: getDishEmoji(dish.name)
+        }));
+        setTopDishes(formattedDishes);
+      }
+    } catch (error) {
+      console.error('Error fetching top dishes:', error);
+      setError('Failed to load top dishes');
+    }
+  };
+
+  const fetchMenuStats = async () => {
+    try {
+      const response = await fetch('/api/restaurant/menu');
+      const data = await response.json();
+      if (data.success) {
+        setStats(prevStats => ({
+          ...prevStats,
+          activeMenuItems: data.stats.availableItems
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching menu stats:', error);
+    }
+  };
+
+  // Helper functions
+  const getTimeAgo = (dateString) => {
+    const now = new Date();
+    const orderDate = new Date(dateString);
+    const diffInMinutes = Math.floor((now - orderDate) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes} mins ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} hours ago`;
+    return `${Math.floor(diffInMinutes / 1440)} days ago`;
+  };
+
+  const getEstimatedTime = (status, createdAt) => {
+    switch (status) {
+      case 'pending': return '15-20 mins';
+      case 'preparing': return '10-15 mins';
+      case 'ready': return 'Ready';
+      case 'delivered': return 'Delivered';
+      case 'cancelled': return 'Cancelled';
+      default: return 'Unknown';
+    }
+  };
+
+  const getDishEmoji = (dishName) => {
+    const name = dishName.toLowerCase();
+    if (name.includes('biryani') || name.includes('rice')) return '🍛';
+    if (name.includes('pizza')) return '🍕';
+    if (name.includes('burger')) return '🍔';
+    if (name.includes('chicken')) return '🍗';
+    if (name.includes('noodle') || name.includes('pasta')) return '🍝';
+    if (name.includes('salad')) return '🥗';
+    if (name.includes('soup')) return '🍲';
+    if (name.includes('sandwich')) return '🥪';
+    if (name.includes('taco')) return '🌮';
+    if (name.includes('curry')) return '🍛';
+    return '🍽️';
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -47,70 +169,20 @@ export default function RestaurantDashboard() {
         }
         setUser(userData);
         
-        setStats({
-          totalOrders: 156,
-          totalRevenue: 12450.75,
-          averageRating: 4.6,
-          activeMenuItems: 45,
-          pendingOrders: 8,
-          todayOrders: 23
-        });
+        // Check profile completeness
+        const profileCheck = await checkRestaurantProfileComplete();
+        if (!profileCheck.isComplete) {
+          setProfileIncomplete(true);
+          setMissingFields(profileCheck.missingFields);
+          setShowProfileModal(true);
+        }
         
-        setRecentOrders([
-          {
-            id: 'ORD001',
-            customerName: 'John Doe',
-            items: ['Chicken Biryani', 'Garlic Naan'],
-            total: 28.50,
-            status: 'preparing',
-            orderTime: '2 mins ago',
-            estimatedTime: '15 mins'
-          },
-          {
-            id: 'ORD002',
-            customerName: 'Sarah Wilson',
-            items: ['Margherita Pizza', 'Caesar Salad'],
-            total: 35.00,
-            status: 'ready',
-            orderTime: '8 mins ago',
-            estimatedTime: 'Ready'
-          },
-          {
-            id: 'ORD003',
-            customerName: 'Mike Johnson',
-            items: ['Beef Burger', 'French Fries', 'Coke'],
-            total: 22.75,
-            status: 'delivered',
-            orderTime: '25 mins ago',
-            estimatedTime: 'Delivered'
-          }
-        ]);
-        
-        setTopDishes([
-          {
-            id: 1,
-            name: 'Chicken Biryani',
-            orders: 45,
-            revenue: 1125.00,
-            rating: 4.8,
-            image: '🍛'
-          },
-          {
-            id: 2,
-            name: 'Margherita Pizza',
-            orders: 38,
-            revenue: 950.00,
-            rating: 4.7,
-            image: '🍕'
-          },
-          {
-            id: 3,
-            name: 'Beef Burger',
-            orders: 32,
-            revenue: 640.00,
-            rating: 4.5,
-            image: '🍔'
-          }
+        // Fetch dashboard data
+        await Promise.all([
+          fetchStats(),
+          fetchRecentOrders(),
+          fetchTopDishes(),
+          fetchMenuStats()
         ]);
         
       } catch (error) {
@@ -126,10 +198,12 @@ export default function RestaurantDashboard() {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth', {
-        method: 'DELETE'
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST'
       });
       if (response.ok) {
+        localStorage.clear();
+        sessionStorage.clear();
         router.push('/login');
       }
     } catch (error) {
@@ -155,43 +229,31 @@ export default function RestaurantDashboard() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <nav className="bg-gray-800/50 backdrop-blur-md border-b border-gray-700 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-2">
-              <ChefHat className="h-8 w-8 text-orange-500" />
-              <span className="text-2xl font-bold text-white">FoodSewa</span>
-              <span className="text-sm bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full ml-2">Restaurant</span>
-            </div>
-            
-            <div className="flex items-center space-x-6">
-              <div className="relative">
-                <Bell className="h-6 w-6 text-gray-400 hover:text-orange-500 cursor-pointer" />
-                {stats.pendingOrders > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {stats.pendingOrders}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                  <User className="h-5 w-5" />
-                </div>
-                <span className="text-gray-300">Welcome, {user?.username}</span>
-              </div>
-              <button 
-                onClick={handleLogout}
-                className="flex items-center space-x-2 text-gray-400 hover:text-red-400 transition-colors"
-              >
-                <LogOut className="h-5 w-5" />
-                <span>Logout</span>
-              </button>
-            </div>
-          </div>
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 text-xl mb-4">{error}</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg"
+          >
+            Retry
+          </button>
         </div>
-      </nav>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <ProfileIncompleteModal 
+        isOpen={showProfileModal} 
+        onClose={() => setShowProfileModal(false)} 
+        missingFields={missingFields} 
+      />
+      
+      <div className="min-h-screen bg-gray-900 text-white">
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -219,7 +281,7 @@ export default function RestaurantDashboard() {
               </div>
               <TrendingUp className="h-5 w-5 text-green-400" />
             </div>
-            <h3 className="text-2xl font-bold mb-1">${stats.totalRevenue.toLocaleString()}</h3>
+            <h3 className="text-2xl font-bold mb-1">${stats.totalRevenue.toFixed(2)}</h3>
             <p className="text-gray-400 text-sm">Total Revenue</p>
             <p className="text-green-400 text-xs mt-1">+12.5% this month</p>
           </div>
@@ -231,7 +293,7 @@ export default function RestaurantDashboard() {
               </div>
               <TrendingUp className="h-5 w-5 text-green-400" />
             </div>
-            <h3 className="text-2xl font-bold mb-1">{stats.averageRating}</h3>
+            <h3 className="text-2xl font-bold mb-1">{stats.averageRating.toFixed(1)}</h3>
             <p className="text-gray-400 text-sm">Average Rating</p>
             <p className="text-green-400 text-xs mt-1">+0.2 this week</p>
           </div>
@@ -248,7 +310,13 @@ export default function RestaurantDashboard() {
               </div>
               
               <div className="space-y-4">
-                {recentOrders.map((order) => (
+                {recentOrders.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <ShoppingBag className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No recent orders found</p>
+                  </div>
+                ) : (
+                  recentOrders.map((order) => (
                   <div key={order.id} className="flex items-center justify-between p-4 bg-gray-700/50 rounded-xl">
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
@@ -269,7 +337,8 @@ export default function RestaurantDashboard() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -277,7 +346,13 @@ export default function RestaurantDashboard() {
               <h2 className="text-xl font-semibold mb-6">Top Performing Dishes</h2>
               
               <div className="space-y-4">
-                {topDishes.map((dish) => (
+                {topDishes.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <ChefHat className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No dish data available</p>
+                  </div>
+                ) : (
+                  topDishes.map((dish) => (
                   <div key={dish.id} className="flex items-center justify-between p-4 bg-gray-700/50 rounded-xl">
                     <div className="flex items-center space-x-4">
                       <div className="text-3xl">{dish.image}</div>
@@ -294,11 +369,12 @@ export default function RestaurantDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-green-400">${dish.revenue}</p>
+                      <p className="font-semibold text-green-400">${dish.revenue.toFixed(2)}</p>
                       <p className="text-xs text-gray-400">Revenue</p>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -372,5 +448,6 @@ export default function RestaurantDashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }

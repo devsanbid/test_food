@@ -29,10 +29,13 @@ import {
   X
 } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+import { checkRestaurantProfileComplete, ProfileIncompleteMessage } from '@/lib/restaurantProfileUtils';
 
 export default function RestaurantDiscounts() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [missingFields, setMissingFields] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -97,6 +100,15 @@ export default function RestaurantDiscounts() {
           return;
         }
         setUser(userData);
+        
+        // Check profile completeness
+        const profileCheck = await checkRestaurantProfileComplete();
+        if (!profileCheck.isComplete) {
+          setProfileIncomplete(true);
+          setMissingFields(profileCheck.missingFields);
+          setLoading(false);
+          return;
+        }
         
         // Mock discount stats
         setDiscountStats({
@@ -420,6 +432,11 @@ export default function RestaurantDiscounts() {
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
+  }
+
+  // Show profile incomplete message if profile is not complete
+  if (profileIncomplete) {
+    return <ProfileIncompleteMessage missingFields={missingFields} />;
   }
 
   return (

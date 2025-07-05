@@ -14,10 +14,13 @@ import {
   FileText,
   User,
   Plus,
-  Edit3
+  Edit3,
+  Shield,
+  LogOut
 } from 'lucide-react';
 
 import { useRouter, usePathname } from 'next/navigation';
+import { logoutAction } from '@/actions/authActions';
 
 export default function YumNavbar() {
   const router = useRouter();
@@ -29,6 +32,26 @@ export default function YumNavbar() {
     dishes: false,
     seller: false
   });
+
+  const handleLogout = async () => {
+    try {
+      await logoutAction();
+      
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+      
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+      
+      router.push('/login');
+    }
+  };
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -81,7 +104,7 @@ export default function YumNavbar() {
   };
 
   return (
-    <div className="w-64 h-screen bg-gray-800 text-white">
+    <div className="w-64 h-screen bg-gray-800 text-white flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-gray-700">
         <div className="flex items-center space-x-3">
@@ -95,7 +118,7 @@ export default function YumNavbar() {
       </div>
 
       {/* Navigation */}
-      <div className="p-4 space-y-2">
+      <div className="p-4 space-y-2 flex-1 overflow-y-auto">
         {/* Dashboard */}
         <NavItem 
           icon={LayoutDashboard} 
@@ -108,6 +131,12 @@ export default function YumNavbar() {
           icon={Settings} 
           label="Manage" 
           href="/admin/manage"
+        />
+
+        <NavItem 
+          icon={Shield} 
+          label="Role Management" 
+          href="/admin/roles"
         />
 
         {/* Orders */}
@@ -173,6 +202,17 @@ export default function YumNavbar() {
           <SubMenuItem icon={UserCheck} label="Sellers List" href="/admin/seller" />
           <SubMenuItem icon={Plus} label="Add Seller" href="/admin/seller/add" />
         </NavItem>
+      </div>
+
+      {/* Logout Button */}
+      <div className="p-4 border-t border-gray-700">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors duration-200 text-red-400 hover:bg-red-600 hover:text-white"
+        >
+          <LogOut size={20} />
+          <span className="font-medium">Logout</span>
+        </button>
       </div>
     </div>
   );

@@ -20,10 +20,13 @@ import {
   Eye
 } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+import { checkRestaurantProfileComplete, ProfileIncompleteMessage } from '@/lib/restaurantProfileUtils';
 
 export default function RestaurantAnalytics() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [missingFields, setMissingFields] = useState([]);
   const [dateRange, setDateRange] = useState('week');
   const [analytics, setAnalytics] = useState({
     revenue: {
@@ -62,6 +65,15 @@ export default function RestaurantAnalytics() {
           return;
         }
         setUser(userData);
+        
+        // Check profile completeness
+        const profileCheck = await checkRestaurantProfileComplete();
+        if (!profileCheck.isComplete) {
+          setProfileIncomplete(true);
+          setMissingFields(profileCheck.missingFields);
+          setLoading(false);
+          return;
+        }
         
         // Mock analytics data based on date range
         const mockAnalytics = {
@@ -257,6 +269,11 @@ export default function RestaurantAnalytics() {
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
+  }
+
+  // Show profile incomplete message if profile is not complete
+  if (profileIncomplete) {
+    return <ProfileIncompleteMessage missingFields={missingFields} />;
   }
 
   return (

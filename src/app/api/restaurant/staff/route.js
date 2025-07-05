@@ -9,9 +9,11 @@ import bcrypt from 'bcryptjs';
 // GET /api/restaurant/staff - Get staff management data
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'list';
@@ -239,9 +241,11 @@ export async function GET(request) {
 // POST /api/restaurant/staff - Add new staff member
 export async function POST(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { action, ...staffData } = await request.json();
     const restaurantId = request.user.restaurantId;
@@ -383,9 +387,11 @@ export async function POST(request) {
 // PUT /api/restaurant/staff - Update staff member
 export async function PUT(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { staffId, action, ...updateData } = await request.json();
 
@@ -584,9 +590,11 @@ export async function PUT(request) {
 // DELETE /api/restaurant/staff - Remove staff member
 export async function DELETE(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { searchParams } = new URL(request.url);
     const staffId = searchParams.get('staffId');

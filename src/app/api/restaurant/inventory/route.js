@@ -8,9 +8,11 @@ import Notification from '@/models/Notification';
 // GET /api/restaurant/inventory - Get inventory management data
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'list';
@@ -183,9 +185,11 @@ export async function GET(request) {
 // PUT /api/restaurant/inventory - Update inventory
 export async function PUT(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { itemId, action, ...updateData } = await request.json();
 
@@ -392,9 +396,11 @@ export async function PUT(request) {
 // POST /api/restaurant/inventory - Bulk operations and reports
 export async function POST(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { action, ...actionData } = await request.json();
     const restaurantId = request.user.restaurantId;

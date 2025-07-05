@@ -24,10 +24,13 @@ import {
   Eye
 } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+import { checkRestaurantProfileComplete, ProfileIncompleteMessage } from '@/lib/restaurantProfileUtils';
 
 export default function RestaurantReviews() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [missingFields, setMissingFields] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [ratingFilter, setRatingFilter] = useState('all');
@@ -81,6 +84,15 @@ export default function RestaurantReviews() {
           return;
         }
         setUser(userData);
+        
+        // Check if restaurant profile is complete
+        const profileCheck = await checkRestaurantProfileComplete(userData.id);
+        if (!profileCheck.isComplete) {
+          setProfileIncomplete(true);
+          setMissingFields(profileCheck.missingFields);
+          setLoading(false);
+          return;
+        }
         
         // Mock review stats
         setReviewStats({
@@ -337,6 +349,11 @@ export default function RestaurantReviews() {
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
+  }
+
+  // Show profile incomplete message if profile is not complete
+  if (profileIncomplete) {
+    return <ProfileIncompleteMessage missingFields={missingFields} />;
   }
 
   return (

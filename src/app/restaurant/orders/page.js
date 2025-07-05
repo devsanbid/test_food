@@ -19,20 +19,27 @@ import {
   ArrowLeft,
   RefreshCw,
   AlertCircle,
-  Calendar
+  Calendar,
+  X,
+  Printer
 } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+import { checkRestaurantProfileComplete, ProfileIncompleteMessage } from '@/lib/restaurantProfileUtils';
 
 export default function OrderManagement() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
-  const [dateFilter, setDateFilter] = useState('today');
+  const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
+  const [updating, setUpdating] = useState(false);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [missingFields, setMissingFields] = useState([]);
   const router = useRouter();
 
   const orderStatuses = [
@@ -56,7 +63,47 @@ export default function OrderManagement() {
         }
         setUser(userData);
         
-        // Mock data for orders
+        // Check profile completeness
+        const profileCheck = await checkRestaurantProfileComplete();
+        if (!profileCheck.isComplete) {
+          setProfileIncomplete(true);
+          setMissingFields(profileCheck.missingFields);
+          setLoading(false);
+          return;
+        }
+        
+        await fetchOrders();
+        
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  const fetchOrders = async () => {
+     try {
+       setLoading(true);
+       setError('');
+       const response = await fetch('/api/restaurant/orders', {
+         headers: {
+           'Content-Type': 'application/json'
+         },
+         credentials: 'include'
+       });
+       
+       const data = await response.json();
+       if (data.success) {
+         setOrders(data.orders);
+         setFilteredOrders(data.orders);
+       } else {
+         setError('Failed to fetch orders: ' + data.message);
+         console.error('Failed to fetch orders:', data.message);
+         // Fallback to mock data if API fails
         const mockOrders = [
           {
             id: 'ORD001',
@@ -144,20 +191,39 @@ export default function OrderManagement() {
             specialInstructions: 'Leave at door'
           }
         ];
-        
         setOrders(mockOrders);
         setFilteredOrders(mockOrders);
-        
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        router.push('/login');
-      } finally {
-        setLoading(false);
       }
-    };
-
-    checkAuth();
-  }, [router]);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      // Fallback to mock data on error
+      const mockOrders = [
+        {
+          id: 'ORD001',
+          customerName: 'John Doe',
+          customerPhone: '+1 234-567-8900',
+          customerEmail: 'john.doe@email.com',
+          deliveryAddress: '123 Main St, Apt 4B, New York, NY 10001',
+          items: [
+            { name: 'Chicken Biryani', quantity: 2, price: 25.00, notes: 'Extra spicy' },
+            { name: 'Garlic Naan', quantity: 3, price: 4.50, notes: '' }
+          ],
+          subtotal: 63.50,
+          deliveryFee: 3.99,
+          tax: 5.41,
+          total: 72.90,
+          status: 'pending',
+          orderTime: new Date(Date.now() - 5 * 60 * 1000),
+          estimatedTime: 25,
+          paymentMethod: 'Credit Card',
+          orderType: 'delivery',
+          specialInstructions: 'Please ring the doorbell twice'
+        }
+      ];
+      setOrders(mockOrders);
+      setFilteredOrders(mockOrders);
+    }
+  };
 
   useEffect(() => {
     let filtered = orders;
@@ -190,15 +256,38 @@ export default function OrderManagement() {
     setFilteredOrders(filtered);
   }, [orders, selectedStatus, searchTerm, dateFilter]);
 
-  const updateOrderStatus = (orderId, newStatus) => {
-    setOrders(prev => prev.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ));
-    
-    if (selectedOrder && selectedOrder.id === orderId) {
-      setSelectedOrder(prev => ({ ...prev, status: newStatus }));
-    }
-  };
+  const updateOrderStatus = async (orderId, action, additionalData = {}) => {
+     try {
+       setUpdating(true);
+       setError('');
+       const response = await fetch('/api/restaurant/orders', {
+         method: 'PUT',
+         headers: {
+           'Content-Type': 'application/json'
+         },
+         credentials: 'include',
+         body: JSON.stringify({
+           orderId,
+           action,
+           ...additionalData
+         })
+       });
+       
+       const data = await response.json();
+       if (data.success) {
+         // Refresh orders after successful update
+         await fetchOrders();
+       } else {
+         setError('Failed to update order: ' + data.message);
+         console.error('Failed to update order:', data.message);
+       }
+     } catch (error) {
+       setError('Error updating order. Please try again.');
+       console.error('Error updating order:', error);
+     } finally {
+       setUpdating(false);
+     }
+   };
 
   const getStatusColor = (status) => {
     const statusObj = orderStatuses.find(s => s.id === status);
@@ -258,6 +347,11 @@ export default function OrderManagement() {
     );
   }
 
+  // Show profile incomplete message if profile is not complete
+  if (profileIncomplete) {
+    return <ProfileIncompleteMessage missingFields={missingFields} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <nav className="bg-gray-800/50 backdrop-blur-md border-b border-gray-700 sticky top-0 z-40">
@@ -287,6 +381,16 @@ export default function OrderManagement() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+              <p className="text-red-400">{error}</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="lg:w-1/4">
             <div className="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 mb-6">
@@ -357,8 +461,8 @@ export default function OrderManagement() {
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center space-x-4">
                       <div>
-                        <h3 className="text-lg font-semibold">#{order.id}</h3>
-                        <p className="text-gray-400 text-sm">{order.customerName}</p>
+                        <h3 className="text-lg font-semibold">#{order.orderNumber || order.id}</h3>
+                        <p className="text-gray-400 text-sm">{order.user ? `${order.user.firstName} ${order.user.lastName}` : order.customerName}</p>
                       </div>
                       <div className={`px-3 py-1 rounded-full text-sm flex items-center space-x-1 ${getStatusColor(order.status)}`}>
                         {getStatusIcon(order.status)}
@@ -367,26 +471,26 @@ export default function OrderManagement() {
                     </div>
                     
                     <div className="text-right">
-                      <p className="text-xl font-bold text-green-400">${order.total.toFixed(2)}</p>
-                      <p className="text-gray-400 text-sm">{formatTime(order.orderTime)}</p>
+                      <p className="text-xl font-bold text-green-400">${(order.totalAmount || order.total)?.toFixed(2)}</p>
+                      <p className="text-gray-400 text-sm">{formatTime(order.createdAt || order.orderTime)}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div className="flex items-center space-x-2 text-sm text-gray-400">
                       <User className="h-4 w-4" />
-                      <span>{order.customerPhone}</span>
+                      <span>{order.user?.phone || order.customerPhone}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-400">
                       <MapPin className="h-4 w-4" />
                       <span className="truncate">
-                        {order.orderType === 'pickup' ? 'Pickup' : order.deliveryAddress.split(',')[0]}
+                        {order.orderType === 'pickup' ? 'Pickup' : (typeof order.deliveryAddress === 'string' ? order.deliveryAddress.split(',')[0] : `${order.deliveryAddress?.street || ''}, ${order.deliveryAddress?.city || ''}`)}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-400">
                       <Clock className="h-4 w-4" />
                       <span>
-                        {order.estimatedTime > 0 ? `${order.estimatedTime} mins` : 'Ready'}
+                        {order.estimatedDeliveryTime ? new Date(order.estimatedDeliveryTime).toLocaleTimeString() : (order.estimatedTime > 0 ? `${order.estimatedTime} mins` : 'Ready')}
                       </span>
                     </div>
                   </div>
@@ -422,55 +526,69 @@ export default function OrderManagement() {
                       {order.status === 'pending' && (
                         <>
                           <button
-                            onClick={() => updateOrderStatus(order.id, 'confirmed')}
-                            className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
+                            onClick={() => updateOrderStatus(order._id || order.id, 'confirm')}
+                            disabled={updating}
+                            className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                           >
-                            Confirm
+                            {updating && <RefreshCw className="h-3 w-3 animate-spin" />}
+                            <span>Confirm</span>
                           </button>
                           <button
-                            onClick={() => updateOrderStatus(order.id, 'cancelled')}
-                            className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors text-sm"
+                            onClick={() => {
+                              const reason = prompt('Please enter cancellation reason:');
+                              if (reason) {
+                                updateOrderStatus(order._id || order.id, 'cancel', { reason });
+                              }
+                            }}
+                            disabled={updating}
+                            className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                           >
-                            Cancel
+                            {updating && <RefreshCw className="h-3 w-3 animate-spin" />}
+                            <span>Cancel</span>
                           </button>
                         </>
                       )}
                       
                       {order.status === 'confirmed' && (
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'preparing')}
-                          className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-lg hover:bg-orange-500/30 transition-colors text-sm"
-                        >
-                          Start Preparing
-                        </button>
-                      )}
-                      
-                      {order.status === 'preparing' && (
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'ready')}
-                          className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors text-sm"
-                        >
-                          Mark Ready
-                        </button>
-                      )}
-                      
-                      {order.status === 'ready' && order.orderType === 'delivery' && (
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'out_for_delivery')}
-                          className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm"
-                        >
-                          Out for Delivery
-                        </button>
-                      )}
-                      
-                      {order.status === 'out_for_delivery' && (
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'delivered')}
-                          className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors text-sm"
-                        >
-                          Mark Delivered
-                        </button>
-                      )}
+                          <button
+                            onClick={() => updateOrderStatus(order._id || order.id, 'start-preparing')}
+                            disabled={updating}
+                            className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-lg hover:bg-orange-500/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                          >
+                            {updating && <RefreshCw className="h-3 w-3 animate-spin" />}
+                            <span>Start Preparing</span>
+                          </button>
+                        )}
+                        {order.status === 'preparing' && (
+                          <button
+                            onClick={() => updateOrderStatus(order._id || order.id, 'ready')}
+                            disabled={updating}
+                            className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                          >
+                            {updating && <RefreshCw className="h-3 w-3 animate-spin" />}
+                            <span>Mark Ready</span>
+                          </button>
+                        )}
+                        {order.status === 'ready' && order.orderType === 'delivery' && (
+                          <button
+                            onClick={() => updateOrderStatus(order._id || order.id, 'out-for-delivery')}
+                            disabled={updating}
+                            className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                          >
+                            {updating && <RefreshCw className="h-3 w-3 animate-spin" />}
+                            <span>Out for Delivery</span>
+                          </button>
+                        )}
+                        {order.status === 'out_for_delivery' && (
+                          <button
+                            onClick={() => updateOrderStatus(order._id || order.id, 'deliver')}
+                            disabled={updating}
+                            className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                          >
+                            {updating && <RefreshCw className="h-3 w-3 animate-spin" />}
+                            <span>Mark Delivered</span>
+                          </button>
+                        )}
                     </div>
                   </div>
                 </div>
@@ -493,7 +611,7 @@ export default function OrderManagement() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Order Details - #{selectedOrder.id}</h2>
+              <h2 className="text-2xl font-bold">Order Details - #{selectedOrder.orderNumber || selectedOrder.id}</h2>
               <button
                 onClick={() => setShowOrderModal(false)}
                 className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
@@ -509,11 +627,11 @@ export default function OrderManagement() {
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center space-x-2">
                       <User className="h-4 w-4 text-gray-400" />
-                      <span>{selectedOrder.customerName}</span>
+                      <span>{selectedOrder.user ? `${selectedOrder.user.firstName} ${selectedOrder.user.lastName}` : selectedOrder.customerName}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Phone className="h-4 w-4 text-gray-400" />
-                      <span>{selectedOrder.customerPhone}</span>
+                      <span>{selectedOrder.user?.phone || selectedOrder.customerPhone}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <MapPin className="h-4 w-4 text-gray-400" />
@@ -535,7 +653,7 @@ export default function OrderManagement() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Order Time:</span>
-                      <span>{selectedOrder.orderTime.toLocaleTimeString()}</span>
+                      <span>{(selectedOrder.createdAt || selectedOrder.orderTime).toLocaleTimeString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Status:</span>
@@ -550,21 +668,21 @@ export default function OrderManagement() {
               <div>
                 <h3 className="text-lg font-semibold mb-3">Order Items</h3>
                 <div className="space-y-3">
-                  {selectedOrder.items.map((item, index) => (
+                  {(selectedOrder.items || []).map((item, index) => (
                     <div key={index} className="flex justify-between items-start p-3 bg-gray-700/50 rounded-lg">
                       <div className="flex-1">
                         <div className="flex justify-between items-start mb-1">
-                          <span className="font-medium">{item.name}</span>
+                          <span className="font-medium">{item.menuItem?.name || item.name}</span>
                           <span className="text-green-400 font-semibold">
-                            ${(item.quantity * item.price).toFixed(2)}
+                            ${(item.quantity * (item.price || item.menuItem?.price || 0)).toFixed(2)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center text-sm text-gray-400">
                           <span>Quantity: {item.quantity}</span>
-                          <span>${item.price.toFixed(2)} each</span>
+                          <span>${(item.price || item.menuItem?.price || 0).toFixed(2)} each</span>
                         </div>
-                        {item.notes && (
-                          <p className="text-xs text-yellow-400 mt-1">Note: {item.notes}</p>
+                        {(item.notes || item.specialInstructions) && (
+                          <p className="text-xs text-yellow-400 mt-1">Note: {item.notes || item.specialInstructions}</p>
                         )}
                       </div>
                     </div>
@@ -577,22 +695,22 @@ export default function OrderManagement() {
                 <div className="bg-gray-700/50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Subtotal:</span>
-                    <span>${selectedOrder.subtotal.toFixed(2)}</span>
+                    <span>${(selectedOrder.subtotal || selectedOrder.totalAmount - (selectedOrder.deliveryFee || 0) - (selectedOrder.tax || 0)).toFixed(2)}</span>
                   </div>
-                  {selectedOrder.deliveryFee > 0 && (
+                  {(selectedOrder.deliveryFee || 0) > 0 && (
                     <div className="flex justify-between text-sm">
                       <span>Delivery Fee:</span>
-                      <span>${selectedOrder.deliveryFee.toFixed(2)}</span>
+                      <span>${(selectedOrder.deliveryFee || 0).toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm">
                     <span>Tax:</span>
-                    <span>${selectedOrder.tax.toFixed(2)}</span>
+                    <span>${(selectedOrder.tax || 0).toFixed(2)}</span>
                   </div>
                   <div className="border-t border-gray-600 pt-2">
                     <div className="flex justify-between font-semibold text-lg">
                       <span>Total:</span>
-                      <span className="text-green-400">${selectedOrder.total.toFixed(2)}</span>
+                      <span className="text-green-400">${(selectedOrder.totalAmount || selectedOrder.total).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

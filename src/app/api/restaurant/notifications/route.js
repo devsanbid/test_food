@@ -6,9 +6,11 @@ import Notification from '@/models/Notification';
 // GET /api/restaurant/notifications - Get restaurant notifications
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'list';
@@ -133,9 +135,11 @@ export async function GET(request) {
 // PUT /api/restaurant/notifications - Update notification status
 export async function PUT(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { notificationId, action, ...updateData } = await request.json();
     const userId = request.user.id;
@@ -258,9 +262,11 @@ export async function PUT(request) {
 // POST /api/restaurant/notifications - Create or manage notifications
 export async function POST(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { action, ...actionData } = await request.json();
     const userId = request.user.id;
@@ -407,9 +413,11 @@ export async function POST(request) {
 // DELETE /api/restaurant/notifications - Delete notifications
 export async function DELETE(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { searchParams } = new URL(request.url);
     const notificationId = searchParams.get('notificationId');

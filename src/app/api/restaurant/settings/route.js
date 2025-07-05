@@ -8,15 +8,17 @@ import Notification from '@/models/Notification';
 // GET /api/restaurant/settings - Get restaurant settings
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { searchParams } = new URL(request.url);
     const section = searchParams.get('section') || 'all';
     
-    const restaurantId = request.user.restaurantId;
-    const restaurant = await Restaurant.findById(restaurantId);
+    // Find restaurant where current user is the owner
+    const restaurant = await Restaurant.findOne({ owner: request.user.id });
     
     if (!restaurant) {
       return NextResponse.json(
@@ -25,7 +27,7 @@ export async function GET(request) {
       );
     }
 
-    const user = await User.findById(request.user.id).select('notificationPreferences');
+    const userProfile = await User.findById(request.user.id).select('notificationPreferences');
 
     switch (section) {
       case 'general':
@@ -96,7 +98,7 @@ export async function GET(request) {
               reviews: true,
               promotions: true
             },
-            userPreferences: user.notificationPreferences || {}
+            userPreferences: userProfile.notificationPreferences || {}
           }
         });
 
@@ -167,7 +169,7 @@ export async function GET(request) {
               emailNotifications: restaurant.notificationSettings?.email,
               smsNotifications: restaurant.notificationSettings?.sms,
               pushNotifications: restaurant.notificationSettings?.push,
-              userPreferences: user.notificationPreferences
+              userPreferences: userProfile.notificationPreferences
             },
             security: {
               twoFactorEnabled: restaurant.security?.twoFactorEnabled,
@@ -199,9 +201,11 @@ export async function GET(request) {
 // PUT /api/restaurant/settings - Update restaurant settings
 export async function PUT(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { section, ...settingsData } = await request.json();
     
@@ -212,8 +216,8 @@ export async function PUT(request) {
       );
     }
 
-    const restaurantId = request.user.restaurantId;
-    const restaurant = await Restaurant.findById(restaurantId);
+    // Find restaurant where current user is the owner
+    const restaurant = await Restaurant.findOne({ owner: request.user.id });
     
     if (!restaurant) {
       return NextResponse.json(
@@ -400,13 +404,15 @@ export async function PUT(request) {
 // POST /api/restaurant/settings - Special settings operations
 export async function POST(request) {
   try {
-    await authenticate(request);
-    await restaurantOnly(request);
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
+    
+    request.user = user;
 
     const { action, ...actionData } = await request.json();
-    const restaurantId = request.user.restaurantId;
-    const restaurant = await Restaurant.findById(restaurantId);
+    // Find restaurant where current user is the owner
+    const restaurant = await Restaurant.findOne({ owner: request.user.id });
     
     if (!restaurant) {
       return NextResponse.json(

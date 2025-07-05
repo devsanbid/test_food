@@ -171,14 +171,13 @@ export default function RestaurantProfile() {
           }
         });
 
-        if (data.stats) {
-          setStats({
-            totalOrders: data.stats.totalOrders || 0,
-            averageRating: data.stats.averageRating || 0,
-            totalReviews: data.stats.totalReviews || 0,
-            joinDate: data.stats.joinDate ? new Date(data.stats.joinDate) : new Date()
-          });
-        }
+        // Set stats with fallback values
+        setStats({
+          totalOrders: data.stats?.totalOrders || 0,
+          averageRating: data.stats?.averageRating || 0,
+          totalReviews: data.stats?.totalReviews || 0,
+          joinDate: data.stats?.joinDate ? new Date(data.stats.joinDate) : new Date()
+        });
       }
     } catch (error) {
       console.error('Error fetching restaurant profile:', error);
@@ -344,7 +343,9 @@ export default function RestaurantProfile() {
   };
 
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', {
+    if (!date) return 'N/A';
+    const dateObj = date instanceof Date ? date : new Date(date);
+    return dateObj.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
