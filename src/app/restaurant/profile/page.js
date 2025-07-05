@@ -55,6 +55,7 @@ export default function RestaurantProfile() {
   const [activeTab, setActiveTab] = useState('basic');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [user, setUser] = useState(null);
   const [restaurant, setRestaurant] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -264,6 +265,7 @@ export default function RestaurantProfile() {
 
       if (data.success) {
         setToast({ show: true, message: 'Restaurant profile updated successfully!', type: 'success' });
+        setIsEditing(false);
         await fetchRestaurantDetails();
       } else {
         setToast({ show: true, message: data.message || 'Failed to update restaurant', type: 'error' });
@@ -283,15 +285,21 @@ export default function RestaurantProfile() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Restaurant Name *
           </label>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
-            className={`w-full px-3 py-2 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 ${
-              errors.name ? 'border-red-500' : 'border-gray-600'
-            }`}
-            placeholder="Enter restaurant name"
-          />
+          {isEditing ? (
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              className={`w-full px-3 py-2 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 ${
+                errors.name ? 'border-red-500' : 'border-gray-600'
+              }`}
+              placeholder="Enter restaurant name"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {formData.name || 'Not specified'}
+            </div>
+          )}
           {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
         </div>
 
@@ -299,31 +307,43 @@ export default function RestaurantProfile() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Cuisine Type
           </label>
-          <select
-            value={Array.isArray(formData.cuisine) ? formData.cuisine[0] || '' : (typeof formData.cuisine === 'string' ? formData.cuisine : '')}
-            onChange={(e) => handleInputChange('cuisine', e.target.value)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
-          >
-            <option value="">Select cuisine type</option>
-            {cuisineTypes.map(cuisine => (
-              <option key={cuisine} value={cuisine}>{cuisine}</option>
-            ))}
-          </select>
+          {isEditing ? (
+            <select
+              value={Array.isArray(formData.cuisine) ? formData.cuisine[0] || '' : (typeof formData.cuisine === 'string' ? formData.cuisine : '')}
+              onChange={(e) => handleInputChange('cuisine', e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+            >
+              <option value="">Select cuisine type</option>
+              {cuisineTypes.map(cuisine => (
+                <option key={cuisine} value={cuisine}>{cuisine}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {Array.isArray(formData.cuisine) ? formData.cuisine[0] || 'Not specified' : (formData.cuisine || 'Not specified')}
+            </div>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Email *
           </label>
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) => handleInputChange('email', e.target.value)}
-            className={`w-full px-3 py-2 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 ${
-              errors.email ? 'border-red-500' : 'border-gray-600'
-            }`}
-            placeholder="Enter email address"
-          />
+          {isEditing ? (
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              className={`w-full px-3 py-2 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 ${
+                errors.email ? 'border-red-500' : 'border-gray-600'
+              }`}
+              placeholder="Enter email address"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {formData.email || 'Not specified'}
+            </div>
+          )}
           {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
         </div>
 
@@ -331,15 +351,21 @@ export default function RestaurantProfile() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Phone *
           </label>
-          <input
-            type="tel"
-            value={formData.phone}
-            onChange={(e) => handleInputChange('phone', e.target.value)}
-            className={`w-full px-3 py-2 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 ${
-              errors.phone ? 'border-red-500' : 'border-gray-600'
-            }`}
-            placeholder="Enter phone number"
-          />
+          {isEditing ? (
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
+              className={`w-full px-3 py-2 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 ${
+                errors.phone ? 'border-red-500' : 'border-gray-600'
+              }`}
+              placeholder="Enter phone number"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {formData.phone || 'Not specified'}
+            </div>
+          )}
           {errors.phone && <p className="text-red-400 text-sm mt-1">{errors.phone}</p>}
         </div>
 
@@ -347,28 +373,46 @@ export default function RestaurantProfile() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Website
           </label>
-          <input
-            type="url"
-            value={formData.website}
-            onChange={(e) => handleInputChange('website', e.target.value)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
-            placeholder="https://yourrestaurant.com"
-          />
+          {isEditing ? (
+            <input
+              type="url"
+              value={formData.website}
+              onChange={(e) => handleInputChange('website', e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
+              placeholder="https://yourrestaurant.com"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {formData.website ? (
+                <a href={formData.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">
+                  {formData.website}
+                </a>
+              ) : (
+                'Not specified'
+              )}
+            </div>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Price Range
           </label>
-          <select
-            value={formData.priceRange}
-            onChange={(e) => handleInputChange('priceRange', e.target.value)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
-          >
-            {priceRanges.map(range => (
-              <option key={range.value} value={range.value}>{range.label}</option>
-            ))}
-          </select>
+          {isEditing ? (
+            <select
+              value={formData.priceRange}
+              onChange={(e) => handleInputChange('priceRange', e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+            >
+              {priceRanges.map(range => (
+                <option key={range.value} value={range.value}>{range.label}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {priceRanges.find(range => range.value === formData.priceRange)?.label || 'Not specified'}
+            </div>
+          )}
         </div>
       </div>
 
@@ -376,13 +420,19 @@ export default function RestaurantProfile() {
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Description
         </label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => handleInputChange('description', e.target.value)}
-          rows={4}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
-          placeholder="Describe your restaurant..."
-        />
+        {isEditing ? (
+          <textarea
+            value={formData.description}
+            onChange={(e) => handleInputChange('description', e.target.value)}
+            rows={4}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
+            placeholder="Describe your restaurant..."
+          />
+        ) : (
+          <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white min-h-[100px]">
+            {formData.description || 'No description provided'}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -390,80 +440,122 @@ export default function RestaurantProfile() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Delivery Fee ($)
           </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.deliveryFee}
-            onChange={(e) => handleInputChange('deliveryFee', parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
-          />
+          {isEditing ? (
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.deliveryFee}
+              onChange={(e) => handleInputChange('deliveryFee', parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              ${formData.deliveryFee?.toFixed(2) || '0.00'}
+            </div>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Minimum Order ($)
           </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.minimumOrderAmount}
-            onChange={(e) => handleInputChange('minimumOrderAmount', parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
-          />
+          {isEditing ? (
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.minimumOrderAmount}
+              onChange={(e) => handleInputChange('minimumOrderAmount', parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              ${formData.minimumOrderAmount?.toFixed(2) || '0.00'}
+            </div>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Delivery Radius (miles)
           </label>
-          <input
-            type="number"
-            min="0"
-            value={formData.deliveryRadius}
-            onChange={(e) => handleInputChange('deliveryRadius', parseInt(e.target.value) || 0)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
-          />
+          {isEditing ? (
+            <input
+              type="number"
+              min="0"
+              value={formData.deliveryRadius}
+              onChange={(e) => handleInputChange('deliveryRadius', parseInt(e.target.value) || 0)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {formData.deliveryRadius || 0} miles
+            </div>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="isActive"
-            checked={formData.isActive}
-            onChange={(e) => handleInputChange('isActive', e.target.checked)}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded bg-gray-800"
-          />
-          <label htmlFor="isActive" className="ml-2 block text-sm text-gray-300">
+          {isEditing ? (
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={formData.isActive}
+              onChange={(e) => handleInputChange('isActive', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded bg-gray-800"
+            />
+          ) : (
+            <div className={`h-4 w-4 rounded border-2 flex items-center justify-center ${
+              formData.isActive ? 'bg-blue-600 border-blue-600' : 'bg-gray-800 border-gray-600'
+            }`}>
+              {formData.isActive && <CheckCircle size={12} className="text-white" />}
+            </div>
+          )}
+          <label className="ml-2 block text-sm text-gray-300">
             Restaurant is Active
           </label>
         </div>
 
         <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="hasDelivery"
-            checked={formData.hasDelivery}
-            onChange={(e) => handleInputChange('hasDelivery', e.target.checked)}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded bg-gray-800"
-          />
-          <label htmlFor="hasDelivery" className="ml-2 block text-sm text-gray-300">
+          {isEditing ? (
+            <input
+              type="checkbox"
+              id="hasDelivery"
+              checked={formData.hasDelivery}
+              onChange={(e) => handleInputChange('hasDelivery', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded bg-gray-800"
+            />
+          ) : (
+            <div className={`h-4 w-4 rounded border-2 flex items-center justify-center ${
+              formData.hasDelivery ? 'bg-blue-600 border-blue-600' : 'bg-gray-800 border-gray-600'
+            }`}>
+              {formData.hasDelivery && <CheckCircle size={12} className="text-white" />}
+            </div>
+          )}
+          <label className="ml-2 block text-sm text-gray-300">
             Offers Delivery
           </label>
         </div>
 
         <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="hasPickup"
-            checked={formData.hasPickup}
-            onChange={(e) => handleInputChange('hasPickup', e.target.checked)}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded bg-gray-800"
-          />
-          <label htmlFor="hasPickup" className="ml-2 block text-sm text-gray-300">
+          {isEditing ? (
+            <input
+              type="checkbox"
+              id="hasPickup"
+              checked={formData.hasPickup}
+              onChange={(e) => handleInputChange('hasPickup', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded bg-gray-800"
+            />
+          ) : (
+            <div className={`h-4 w-4 rounded border-2 flex items-center justify-center ${
+              formData.hasPickup ? 'bg-blue-600 border-blue-600' : 'bg-gray-800 border-gray-600'
+            }`}>
+              {formData.hasPickup && <CheckCircle size={12} className="text-white" />}
+            </div>
+          )}
+          <label className="ml-2 block text-sm text-gray-300">
             Offers Pickup
           </label>
         </div>
@@ -477,15 +569,21 @@ export default function RestaurantProfile() {
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Street Address *
         </label>
-        <input
-          type="text"
-          value={formData.address}
-          onChange={(e) => handleInputChange('address', e.target.value)}
-          className={`w-full px-3 py-2 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 ${
-            errors.address ? 'border-red-500' : 'border-gray-600'
-          }`}
-          placeholder="Enter street address"
-        />
+        {isEditing ? (
+          <input
+            type="text"
+            value={formData.address}
+            onChange={(e) => handleInputChange('address', e.target.value)}
+            className={`w-full px-3 py-2 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 ${
+              errors.address ? 'border-red-500' : 'border-gray-600'
+            }`}
+            placeholder="Enter street address"
+          />
+        ) : (
+          <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+            {formData.address || 'Not specified'}
+          </div>
+        )}
         {errors.address && <p className="text-red-400 text-sm mt-1">{errors.address}</p>}
       </div>
 
@@ -494,15 +592,21 @@ export default function RestaurantProfile() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             City *
           </label>
-          <input
-            type="text"
-            value={formData.city}
-            onChange={(e) => handleInputChange('city', e.target.value)}
-            className={`w-full px-3 py-2 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 ${
-              errors.city ? 'border-red-500' : 'border-gray-600'
-            }`}
-            placeholder="Enter city"
-          />
+          {isEditing ? (
+            <input
+              type="text"
+              value={formData.city}
+              onChange={(e) => handleInputChange('city', e.target.value)}
+              className={`w-full px-3 py-2 bg-gray-800 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 ${
+                errors.city ? 'border-red-500' : 'border-gray-600'
+              }`}
+              placeholder="Enter city"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {formData.city || 'Not specified'}
+            </div>
+          )}
           {errors.city && <p className="text-red-400 text-sm mt-1">{errors.city}</p>}
         </div>
 
@@ -510,39 +614,57 @@ export default function RestaurantProfile() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             State
           </label>
-          <input
-            type="text"
-            value={formData.state}
-            onChange={(e) => handleInputChange('state', e.target.value)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
-            placeholder="Enter state"
-          />
+          {isEditing ? (
+            <input
+              type="text"
+              value={formData.state}
+              onChange={(e) => handleInputChange('state', e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
+              placeholder="Enter state"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {formData.state || 'Not specified'}
+            </div>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             ZIP Code
           </label>
-          <input
-            type="text"
-            value={formData.zipCode}
-            onChange={(e) => handleInputChange('zipCode', e.target.value)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
-            placeholder="Enter ZIP code"
-          />
+          {isEditing ? (
+            <input
+              type="text"
+              value={formData.zipCode}
+              onChange={(e) => handleInputChange('zipCode', e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
+              placeholder="Enter ZIP code"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {formData.zipCode || 'Not specified'}
+            </div>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Country
           </label>
-          <input
-            type="text"
-            value={formData.country}
-            onChange={(e) => handleInputChange('country', e.target.value)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
-            placeholder="Enter country"
-          />
+          {isEditing ? (
+            <input
+              type="text"
+              value={formData.country}
+              onChange={(e) => handleInputChange('country', e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400"
+              placeholder="Enter country"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+              {formData.country || 'Not specified'}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -707,18 +829,35 @@ export default function RestaurantProfile() {
                 Restaurant Profile
               </h1>
             </div>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            <div className="flex gap-3">
+              {!isEditing ? (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                >
+                  <Edit3 size={20} />
+                  Edit Profile
+                </button>
               ) : (
-                <Save size={16} className="mr-2" />
+                <>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                  >
+                    <X size={20} />
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                  >
+                    <Save size={20} />
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </>
               )}
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
+            </div>
           </div>
         </div>
       </div>

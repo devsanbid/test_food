@@ -28,6 +28,7 @@ export default function RestaurantAnalytics() {
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [missingFields, setMissingFields] = useState([]);
   const [dateRange, setDateRange] = useState('week');
+  const [error, setError] = useState(null);
   const [analytics, setAnalytics] = useState({
     revenue: {
       current: 0,
@@ -75,170 +76,60 @@ export default function RestaurantAnalytics() {
           return;
         }
         
-        // Mock analytics data based on date range
-        const mockAnalytics = {
-          week: {
-            revenue: { current: 3250.75, previous: 2890.50, change: 12.5 },
-            orders: { current: 156, previous: 142, change: 9.9 },
-            customers: { current: 89, previous: 78, change: 14.1 },
-            rating: { current: 4.6, previous: 4.4, change: 4.5 }
-          },
-          month: {
-            revenue: { current: 14250.75, previous: 12890.50, change: 10.5 },
-            orders: { current: 678, previous: 612, change: 10.8 },
-            customers: { current: 234, previous: 198, change: 18.2 },
-            rating: { current: 4.6, previous: 4.3, change: 7.0 }
-          },
-          year: {
-            revenue: { current: 125250.75, previous: 98890.50, change: 26.7 },
-            orders: { current: 5678, previous: 4512, change: 25.8 },
-            customers: { current: 1234, previous: 998, change: 23.6 },
-            rating: { current: 4.6, previous: 4.2, change: 9.5 }
-          }
-        };
-        
-        setAnalytics(mockAnalytics[dateRange]);
-        
-        // Mock chart data
-        const mockChartData = {
-          week: [
-            { label: 'Mon', revenue: 450, orders: 22 },
-            { label: 'Tue', revenue: 520, orders: 28 },
-            { label: 'Wed', revenue: 380, orders: 18 },
-            { label: 'Thu', revenue: 620, orders: 32 },
-            { label: 'Fri', revenue: 750, orders: 38 },
-            { label: 'Sat', revenue: 680, orders: 34 },
-            { label: 'Sun', revenue: 590, orders: 29 }
-          ],
-          month: [
-            { label: 'Week 1', revenue: 2450, orders: 122 },
-            { label: 'Week 2', revenue: 2820, orders: 148 },
-            { label: 'Week 3', revenue: 3180, orders: 156 },
-            { label: 'Week 4', revenue: 3250, orders: 162 }
-          ],
-          year: [
-            { label: 'Jan', revenue: 8450, orders: 422 },
-            { label: 'Feb', revenue: 9520, orders: 478 },
-            { label: 'Mar', revenue: 10380, orders: 518 },
-            { label: 'Apr', revenue: 11620, orders: 582 },
-            { label: 'May', revenue: 12750, orders: 638 },
-            { label: 'Jun', revenue: 11680, orders: 584 },
-            { label: 'Jul', revenue: 13590, orders: 679 },
-            { label: 'Aug', revenue: 14250, orders: 712 },
-            { label: 'Sep', revenue: 12890, orders: 644 },
-            { label: 'Oct', revenue: 13450, orders: 672 },
-            { label: 'Nov', revenue: 14120, orders: 706 },
-            { label: 'Dec', revenue: 15250, orders: 762 }
-          ]
-        };
-        
-        setChartData(mockChartData[dateRange]);
-        
-        // Mock top dishes data
-        setTopDishes([
-          {
-            id: 1,
-            name: 'Chicken Biryani',
-            orders: 156,
-            revenue: 3900.00,
-            rating: 4.8,
-            trend: 'up',
-            change: 15.2
-          },
-          {
-            id: 2,
-            name: 'Margherita Pizza',
-            orders: 89,
-            revenue: 1646.50,
-            rating: 4.6,
-            trend: 'up',
-            change: 8.5
-          },
-          {
-            id: 3,
-            name: 'Beef Burger',
-            orders: 67,
-            revenue: 1005.00,
-            rating: 4.4,
-            trend: 'down',
-            change: -3.2
-          },
-          {
-            id: 4,
-            name: 'Caesar Salad',
-            orders: 45,
-            revenue: 540.00,
-            rating: 4.3,
-            trend: 'up',
-            change: 12.8
-          },
-          {
-            id: 5,
-            name: 'Chocolate Brownie',
-            orders: 78,
-            revenue: 663.00,
-            rating: 4.9,
-            trend: 'up',
-            change: 22.1
-          }
-        ]);
-        
-        // Mock recent reviews
-        setRecentReviews([
-          {
-            id: 1,
-            customerName: 'John Doe',
-            rating: 5,
-            comment: 'Amazing food quality and fast delivery!',
-            dish: 'Chicken Biryani',
-            date: new Date(Date.now() - 2 * 60 * 60 * 1000)
-          },
-          {
-            id: 2,
-            customerName: 'Sarah Wilson',
-            rating: 4,
-            comment: 'Good taste but could be a bit warmer.',
-            dish: 'Margherita Pizza',
-            date: new Date(Date.now() - 5 * 60 * 60 * 1000)
-          },
-          {
-            id: 3,
-            customerName: 'Mike Johnson',
-            rating: 5,
-            comment: 'Perfect burger, exactly as ordered!',
-            dish: 'Beef Burger',
-            date: new Date(Date.now() - 8 * 60 * 60 * 1000)
-          }
-        ]);
-        
-        // Mock hourly data
-        setHourlyData([
-          { hour: '9 AM', orders: 5, revenue: 125 },
-          { hour: '10 AM', orders: 8, revenue: 200 },
-          { hour: '11 AM', orders: 12, revenue: 300 },
-          { hour: '12 PM', orders: 25, revenue: 625 },
-          { hour: '1 PM', orders: 32, revenue: 800 },
-          { hour: '2 PM', orders: 18, revenue: 450 },
-          { hour: '3 PM', orders: 10, revenue: 250 },
-          { hour: '4 PM', orders: 8, revenue: 200 },
-          { hour: '5 PM', orders: 15, revenue: 375 },
-          { hour: '6 PM', orders: 28, revenue: 700 },
-          { hour: '7 PM', orders: 35, revenue: 875 },
-          { hour: '8 PM', orders: 30, revenue: 750 },
-          { hour: '9 PM', orders: 22, revenue: 550 },
-          { hour: '10 PM', orders: 12, revenue: 300 }
-        ]);
+        // Analytics data will be fetched by the separate useEffect
         
       } catch (error) {
-        console.error('Auth check failed:', error);
-        router.push('/login');
+        console.error('Error:', error);
+        if (error.message.includes('Failed to fetch analytics data') || error.message.includes('Internal server error')) {
+          setError('Failed to load analytics data. Please try again later.');
+        } else {
+          setError('Authentication failed. Redirecting to login...');
+          setTimeout(() => router.push('/login'), 2000);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     checkAuth();
-  }, [router, dateRange]);
+  }, [router]);
+
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      if (!user) return;
+      
+      try {
+        setError(null);
+        const response = await fetch(`/api/restaurant/analytics?range=${dateRange}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch analytics data');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          setAnalytics(data.analytics);
+          setChartData(data.chartData);
+          setTopDishes(data.topDishes);
+          setRecentReviews(data.recentReviews);
+          setHourlyData(data.hourlyData);
+        } else {
+          throw new Error(data.message || 'Failed to fetch analytics data');
+        }
+      } catch (error) {
+        console.error('Analytics fetch error:', error);
+        setError('Failed to load analytics data. Please try again later.');
+      }
+    };
+
+    fetchAnalyticsData();
+  }, [dateRange, user]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -274,6 +165,23 @@ export default function RestaurantAnalytics() {
   // Show profile incomplete message if profile is not complete
   if (profileIncomplete) {
     return <ProfileIncompleteMessage missingFields={missingFields} />;
+  }
+
+  // Show error message if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 text-xl mb-4">{error}</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -531,7 +439,7 @@ export default function RestaurantAnalytics() {
                   <p className="text-sm text-gray-300 mb-2">{review.comment}</p>
                   <div className="flex justify-between items-center text-xs text-gray-400">
                     <span>{review.dish}</span>
-                    <span>{review.date.toLocaleDateString()}</span>
+                    <span>{new Date(review.date).toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
