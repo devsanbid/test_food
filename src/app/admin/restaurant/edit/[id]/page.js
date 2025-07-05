@@ -22,7 +22,10 @@ import {
   Maximize2,
   ArrowLeft,
   Save,
-  X
+  X,
+  Building,
+  MapPin,
+  Clock
 } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
 
@@ -57,36 +60,21 @@ export default function RestaurantEditPage() {
     hasDelivery: true,
     hasPickup: true,
     operatingHours: {
-      monday: { open: '09:00', close: '22:00', closed: false },
-      tuesday: { open: '09:00', close: '22:00', closed: false },
-      wednesday: { open: '09:00', close: '22:00', closed: false },
-      thursday: { open: '09:00', close: '22:00', closed: false },
-      friday: { open: '09:00', close: '23:00', closed: false },
-      saturday: { open: '09:00', close: '23:00', closed: false },
-      sunday: { open: '10:00', close: '21:00', closed: false }
-    },
-    owner: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: ''
-    },
-    bankDetails: {
-      bankName: '',
-      accountNumber: '',
-      accountHolderName: '',
-      routingNumber: '',
-      branch: ''
+      monday: { open: '09:00', close: '22:00', isClosed: false },
+      tuesday: { open: '09:00', close: '22:00', isClosed: false },
+      wednesday: { open: '09:00', close: '22:00', isClosed: false },
+      thursday: { open: '09:00', close: '22:00', isClosed: false },
+      friday: { open: '09:00', close: '22:00', isClosed: false },
+      saturday: { open: '09:00', close: '22:00', isClosed: false },
+      sunday: { open: '09:00', close: '22:00', isClosed: false }
     }
   });
   const [errors, setErrors] = useState({});
 
   const tabs = [
-    { id: 'basic', name: 'Basic Info', icon: User },
-    { id: 'location', name: 'Location', icon: Globe },
-    { id: 'hours', name: 'Operating Hours', icon: Shield },
-    { id: 'owner', name: 'Owner Details', icon: Users },
-    { id: 'bank', name: 'Bank Details', icon: Wallet }
+    { id: 'basic', name: 'Basic Info', icon: Building },
+    { id: 'location', name: 'Location', icon: MapPin },
+    { id: 'hours', name: 'Operating Hours', icon: Clock }
   ];
 
   const cuisineTypes = [
@@ -141,37 +129,24 @@ export default function RestaurantEditPage() {
         setFormData({
           name: data.restaurant.name || '',
           description: data.restaurant.description || '',
-          cuisine: data.restaurant.cuisine || '',
-          address: data.restaurant.address || '',
-          city: data.restaurant.city || '',
-          state: data.restaurant.state || '',
-          zipCode: data.restaurant.zipCode || '',
-          country: data.restaurant.country || '',
+          cuisine: Array.isArray(data.restaurant.cuisine) ? data.restaurant.cuisine[0] || '' : (typeof data.restaurant.cuisine === 'string' ? data.restaurant.cuisine : ''),
+          address: data.restaurant.address?.street || '',
+          city: data.restaurant.address?.city || '',
+          state: data.restaurant.address?.state || '',
+          zipCode: data.restaurant.address?.zipCode || '',
+          country: '',
           phone: data.restaurant.phone || '',
           email: data.restaurant.email || '',
           website: data.restaurant.website || '',
           priceRange: data.restaurant.priceRange || '$',
           deliveryFee: data.restaurant.deliveryFee || 0,
-          minimumOrderAmount: data.restaurant.minimumOrderAmount || 0,
-          deliveryRadius: data.restaurant.deliveryRadius || 0,
+          minimumOrderAmount: data.restaurant.minimumOrder || 0,
+          deliveryRadius: 0,
           isActive: data.restaurant.isActive !== undefined ? data.restaurant.isActive : true,
-          acceptsOnlineOrders: data.restaurant.acceptsOnlineOrders !== undefined ? data.restaurant.acceptsOnlineOrders : true,
-          hasDelivery: data.restaurant.hasDelivery !== undefined ? data.restaurant.hasDelivery : true,
-          hasPickup: data.restaurant.hasPickup !== undefined ? data.restaurant.hasPickup : true,
-          operatingHours: data.restaurant.operatingHours || formData.operatingHours,
-          owner: {
-            firstName: data.restaurant.owner?.firstName || '',
-            lastName: data.restaurant.owner?.lastName || '',
-            email: data.restaurant.owner?.email || '',
-            phone: data.restaurant.owner?.phone || ''
-          },
-          bankDetails: {
-            bankName: data.restaurant.bankDetails?.bankName || '',
-            accountNumber: data.restaurant.bankDetails?.accountNumber || '',
-            accountHolderName: data.restaurant.bankDetails?.accountHolderName || '',
-            routingNumber: data.restaurant.bankDetails?.routingNumber || '',
-            branch: data.restaurant.bankDetails?.branch || ''
-          }
+          acceptsOnlineOrders: true,
+          hasDelivery: data.restaurant.features?.includes('delivery') || false,
+          hasPickup: data.restaurant.features?.includes('pickup') || false,
+          operatingHours: data.restaurant.operatingHours || formData.operatingHours
         });
       } else {
         console.error('Failed to fetch restaurant details:', data.message);
@@ -239,13 +214,46 @@ export default function RestaurantEditPage() {
     try {
       setSaving(true);
       
+      // Transform form data to match Restaurant schema
+      const restaurantData = {
+        name: formData.name,
+        description: formData.description,
+        cuisine: [formData.cuisine], // Convert to array as per schema
+        address: {
+          street: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          coordinates: {
+            latitude: 0, // Default values - should be set via geocoding
+            longitude: 0
+          }
+        },
+        phone: formData.phone,
+        email: formData.email,
+        website: formData.website,
+        priceRange: formData.priceRange,
+        deliveryFee: formData.deliveryFee,
+        minimumOrder: formData.minimumOrderAmount,
+        deliveryTime: {
+          min: 30, // Default values
+          max: 60
+        },
+        operatingHours: formData.operatingHours,
+        isActive: formData.isActive,
+        features: [
+          ...(formData.hasDelivery ? ['delivery'] : []),
+          ...(formData.hasPickup ? ['pickup'] : [])
+        ]
+      };
+      
       const response = await fetch(`/api/admin/restaurants/${restaurantId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify(formData)
+        body: JSON.stringify(restaurantData)
       });
       
       const data = await response.json();
@@ -359,7 +367,7 @@ export default function RestaurantEditPage() {
                   <div>
                     <label className="block text-sm font-medium mb-2">Cuisine Type</label>
                     <select
-                      value={formData.cuisine}
+                      value={typeof formData.cuisine === 'string' ? formData.cuisine : ''}
                       onChange={(e) => handleInputChange('cuisine', e.target.value)}
                       className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                     >
@@ -546,13 +554,13 @@ export default function RestaurantEditPage() {
                       <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
-                          checked={!hours.closed}
-                          onChange={(e) => handleOperatingHoursChange(day, 'closed', !e.target.checked)}
+                          checked={!hours.isClosed}
+                          onChange={(e) => handleOperatingHoursChange(day, 'isClosed', !e.target.checked)}
                           className="rounded"
                         />
                         <span className="text-sm">Open</span>
                       </div>
-                      {!hours.closed && (
+                      {!hours.isClosed && (
                         <>
                           <div>
                             <label className="block text-xs text-slate-400 mb-1">Open</label>
@@ -574,7 +582,7 @@ export default function RestaurantEditPage() {
                           </div>
                         </>
                       )}
-                      {hours.closed && (
+                      {hours.isClosed && (
                         <span className="text-slate-400 text-sm">Closed</span>
                       )}
                     </div>
@@ -583,113 +591,7 @@ export default function RestaurantEditPage() {
               </div>
             )}
 
-            {/* Owner Details Tab */}
-            {activeTab === 'owner' && (
-              <div>
-                <h2 className="text-xl font-semibold mb-6">Owner Details</h2>
-                
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">First Name</label>
-                    <input
-                      type="text"
-                      value={formData.owner.firstName}
-                      onChange={(e) => handleInputChange('owner.firstName', e.target.value)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Last Name</label>
-                    <input
-                      type="text"
-                      value={formData.owner.lastName}
-                      onChange={(e) => handleInputChange('owner.lastName', e.target.value)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Owner Email</label>
-                    <input
-                      type="email"
-                      value={formData.owner.email}
-                      onChange={(e) => handleInputChange('owner.email', e.target.value)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Owner Phone</label>
-                    <input
-                      type="text"
-                      value={formData.owner.phone}
-                      onChange={(e) => handleInputChange('owner.phone', e.target.value)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Bank Details Tab */}
-            {activeTab === 'bank' && (
-              <div>
-                <h2 className="text-xl font-semibold mb-6">Bank Details</h2>
-                
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Bank Name</label>
-                    <input
-                      type="text"
-                      value={formData.bankDetails.bankName}
-                      onChange={(e) => handleInputChange('bankDetails.bankName', e.target.value)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Branch</label>
-                    <input
-                      type="text"
-                      value={formData.bankDetails.branch}
-                      onChange={(e) => handleInputChange('bankDetails.branch', e.target.value)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-2">Account Holder Name</label>
-                  <input
-                    type="text"
-                    value={formData.bankDetails.accountHolderName}
-                    onChange={(e) => handleInputChange('bankDetails.accountHolderName', e.target.value)}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Account Number</label>
-                    <input
-                      type="text"
-                      value={formData.bankDetails.accountNumber}
-                      onChange={(e) => handleInputChange('bankDetails.accountNumber', e.target.value)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Routing Number</label>
-                    <input
-                      type="text"
-                      value={formData.bankDetails.routingNumber}
-                      onChange={(e) => handleInputChange('bankDetails.routingNumber', e.target.value)}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

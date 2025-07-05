@@ -1,26 +1,84 @@
 "use client"
 
 import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { 
+  ChevronRight, 
+  User, 
+  ChevronDown, 
+  Wallet, 
+  FileText, 
+  Shield, 
+  AlertCircle, 
+  Grid3X3, 
+  Zap, 
+  ArrowUp,
+  Sun,
+  Camera,
+  Mail,
+  Phone,
+  MapPin,
+  Save,
+  RotateCcw,
+  UserPlus,
+  Building,
+  Globe
+} from 'lucide-react';
 
-export default function YumAdminDashboard() {
+export default function AddSellerPage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     username: '',
-    email: 'demoexample@mail.com',
-    phone: '+1-123-XXX-4567',
+    email: '',
+    phone: '',
     country: '',
     state: '',
     zip: '',
-    description: 'Jot something down...'
+    description: '',
+    address: '',
+    businessName: '',
+    businessType: '',
+    profileImage: null
   });
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState('personal');
 
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData(prev => ({
+        ...prev,
+        profileImage: file
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.username.trim()) newErrors.username = 'Username is required';
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
+    if (!formData.businessName.trim()) newErrors.businessName = 'Business name is required';
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleClear = () => {
@@ -33,301 +91,463 @@ export default function YumAdminDashboard() {
       country: '',
       state: '',
       zip: '',
-      description: ''
+      address: '',
+      businessName: '',
+      businessType: '',
+      description: '',
+      profileImage: null
     });
+    setErrors({});
   };
 
-  const handleSave = () => {
-    console.log('Saving seller data:', formData);
+  const handleSave = async () => {
+    if (!validateForm()) return;
+    
+    setIsLoading(true);
+    try {
+      console.log('Saving seller data:', formData);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error('Error saving seller:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="text-white">
-        {/* Sidebar */}
-        <aside className="w-64 bg-slate-800 min-h-screen border-r border-slate-700">
-          <nav className="p-4 space-y-2">
-            {/* Sellers Section */}
-            <div>
-              <div className="flex items-center justify-between text-slate-300 hover:text-white cursor-pointer py-2">
-                <div className="flex items-center space-x-2">
-                  <User className="w-4 h-4" />
-                  <span>Sellers</span>
-                </div>
-                <ChevronDown className="w-4 h-4" />
-              </div>
-              <div className="ml-6 space-y-1">
-                <div className="text-slate-400 hover:text-white cursor-pointer py-1 text-sm">• Sellers List</div>
-                <div className="text-slate-400 hover:text-white cursor-pointer py-1 text-sm">• Seller Details</div>
-                <div className="text-orange-500 cursor-pointer py-1 text-sm bg-slate-700 px-2 rounded">• Add Seller</div>
-                <div className="text-slate-400 hover:text-white cursor-pointer py-1 text-sm">• Edit Seller</div>
-              </div>
-            </div>
-
-            {/* Other Menu Items */}
-            <div className="flex items-center space-x-2 text-slate-400 hover:text-white cursor-pointer py-2">
-              <Wallet className="w-4 h-4" />
-              <span>Wallet</span>
-            </div>
-
-            <div className="flex items-center justify-between text-slate-400 hover:text-white cursor-pointer py-2">
-              <div className="flex items-center space-x-2">
-                <FileText className="w-4 h-4" />
-                <span>Extra Pages</span>
-              </div>
-              <ChevronDown className="w-4 h-4" />
-            </div>
-
-            <div className="flex items-center justify-between text-slate-400 hover:text-white cursor-pointer py-2">
-              <div className="flex items-center space-x-2">
-                <Shield className="w-4 h-4" />
-                <span>Authentication</span>
-              </div>
-              <ChevronDown className="w-4 h-4" />
-            </div>
-
-            <div className="flex items-center justify-between text-slate-400 hover:text-white cursor-pointer py-2">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4" />
-                <span>Error Pages</span>
-              </div>
-              <ChevronDown className="w-4 h-4" />
-            </div>
-
-            <div className="flex items-center space-x-2 text-slate-400 hover:text-white cursor-pointer py-2">
-              <Grid3X3 className="w-4 h-4" />
-              <span>UI Elements</span>
-            </div>
-
-            <div className="flex items-center space-x-2 text-slate-400 hover:text-white cursor-pointer py-2">
-              <Grid3X3 className="w-4 h-4" />
-              <span>Widget</span>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="container mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+            <UserPlus className="w-8 h-8 mr-3 text-orange-500" />
+            Add New Seller
+          </h1>
+          <nav className="text-sm text-slate-400">
+            <span>Admin</span>
+            <ChevronRight className="w-4 h-4 inline mx-2" />
+            <span>Sellers</span>
+            <ChevronRight className="w-4 h-4 inline mx-2" />
+            <span className="text-orange-500">Add Seller</span>
           </nav>
+        </div>
 
-          {/* Upgrade Section */}
-          <div className="m-4 p-4 bg-slate-700 rounded-lg">
-            <div className="flex items-center justify-center w-12 h-12 bg-orange-500 rounded-lg mb-3 mx-auto">
-              <Zap className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-sm text-slate-300 mb-2">
-              🔥 Upgrade Your Plan. Find Out here
-            </div>
-            <button className="text-orange-500 text-sm hover:underline">
-              Contact Support
-            </button>
-          </div>
-
-          {/* Bottom Menu */}
-          <div className="absolute bottom-4 left-4 right-4 space-y-2">
-            <div className="flex items-center space-x-2 text-slate-400 hover:text-white cursor-pointer py-2">
-              <User className="w-4 h-4" />
-              <span>Profile</span>
-            </div>
-            <div className="flex items-center space-x-2 text-red-400 hover:text-red-300 cursor-pointer py-2">
-              <ArrowUp className="w-4 h-4 rotate-45" />
-              <span>Logout</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="p-6">
-          {/* Breadcrumb */}
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-semibold">Add Seller</h1>
-            <div className="flex items-center space-x-2 text-sm text-slate-400">
-              <span>Sellers</span>
-              <ChevronRight className="w-4 h-4" />
-              <span className="text-orange-500">Add Seller</span>
-            </div>
-          </div>
-
-          {/* Form */}
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <div className="grid grid-cols-2 gap-6">
-              {/* First Name */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  First Name
-                </label>
+        <div className="flex gap-8">
+          <div className="w-80 bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-2xl border border-slate-700/50 p-6 h-fit sticky top-8">
+            <div className="mb-8">
+              <div className="flex items-center justify-center w-24 h-24 mx-auto mb-4 bg-slate-700/50 rounded-full border-4 border-dashed border-slate-600 hover:border-orange-500/50 transition-all cursor-pointer group relative overflow-hidden">
+                {formData.profileImage ? (
+                  <img
+                    src={URL.createObjectURL(formData.profileImage)}
+                    alt="Profile"
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  <Camera className="w-6 h-6 text-slate-400 group-hover:text-orange-500 transition-colors" />
+                )}
                 <input
-                  type="text"
-                  name="firstName"
-                  placeholder="Enter Your First Name"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
               </div>
+              <p className="text-center text-xs text-slate-400">Upload Photo</p>
+            </div>
 
-              {/* Last Name */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  name="lastName"
-                  placeholder="Enter Your Last Name"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-
-              {/* User Name */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  User Name
-                </label>
-                <input
-                  type="text"
-                  name="username"
-                  placeholder="Enter Your Last Name"
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-
-              {/* Phone Number */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-
-              {/* Country/Region */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Country/Region
-                </label>
-                <div className="relative">
-                  <select
-                    name="country"
-                    value={formData.country}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none"
+            <nav className="space-y-2">
+                  <div 
+                    onClick={() => setActiveSection('personal')}
+                    className={`flex items-center px-4 py-3 rounded-lg transition-all cursor-pointer ${
+                      activeSection === 'personal' 
+                        ? 'text-orange-500 bg-orange-500/10 border border-orange-500/20' 
+                        : 'text-slate-300 hover:text-white hover:bg-slate-700/30'
+                    }`}
                   >
-                    <option value="">Select...</option>
-                    <option value="us">United States</option>
-                    <option value="ca">Canada</option>
-                    <option value="uk">United Kingdom</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <User className="w-5 h-5 mr-3" />
+                    <span className={activeSection === 'personal' ? 'font-medium' : ''}>Personal Info</span>
+                  </div>
+                  <div 
+                    onClick={() => setActiveSection('business')}
+                    className={`flex items-center px-4 py-3 rounded-lg transition-all cursor-pointer ${
+                      activeSection === 'business' 
+                        ? 'text-orange-500 bg-orange-500/10 border border-orange-500/20' 
+                        : 'text-slate-300 hover:text-white hover:bg-slate-700/30'
+                    }`}
+                  >
+                    <Building className="w-5 h-5 mr-3" />
+                    <span className={activeSection === 'business' ? 'font-medium' : ''}>Business Info</span>
+                  </div>
+                  <div 
+                    onClick={() => setActiveSection('location')}
+                    className={`flex items-center px-4 py-3 rounded-lg transition-all cursor-pointer ${
+                      activeSection === 'location' 
+                        ? 'text-orange-500 bg-orange-500/10 border border-orange-500/20' 
+                        : 'text-slate-300 hover:text-white hover:bg-slate-700/30'
+                    }`}
+                  >
+                    <MapPin className="w-5 h-5 mr-3" />
+                    <span className={activeSection === 'location' ? 'font-medium' : ''}>Location</span>
+                  </div>
+                  <div 
+                    onClick={() => setActiveSection('additional')}
+                    className={`flex items-center px-4 py-3 rounded-lg transition-all cursor-pointer ${
+                      activeSection === 'additional' 
+                        ? 'text-orange-500 bg-orange-500/10 border border-orange-500/20' 
+                        : 'text-slate-300 hover:text-white hover:bg-slate-700/30'
+                    }`}
+                  >
+                    <FileText className="w-5 h-5 mr-3" />
+                    <span className={activeSection === 'additional' ? 'font-medium' : ''}>Additional Info</span>
+                  </div>
+                </nav>
+
+            <div className="mt-8 pt-6 border-t border-slate-700/50">
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleClear}
+                  disabled={isLoading}
+                  className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-slate-600 hover:border-slate-500"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Clear Form</span>
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isLoading}
+                  className="flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Create Seller</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-2xl border border-slate-700/50 p-8">
+            {activeSection === 'personal' && (
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-8 flex items-center">
+                  <User className="w-6 h-6 mr-3 text-orange-500" />
+                  Personal Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      First Name *
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="text"
+                        name="firstName"
+                        placeholder="Enter first name"
+                        value={formData.firstName}
+                        onChange={handleInputChange}
+                        className={`w-full bg-slate-700/50 border rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all ${
+                          errors.firstName ? 'border-red-500' : 'border-slate-600'
+                        }`}
+                      />
+                    </div>
+                    {errors.firstName && (
+                      <p className="mt-1 text-sm text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        {errors.firstName}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Last Name *
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="text"
+                        name="lastName"
+                        placeholder="Enter last name"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        className={`w-full bg-slate-700/50 border rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all ${
+                          errors.lastName ? 'border-red-500' : 'border-slate-600'
+                        }`}
+                      />
+                    </div>
+                    {errors.lastName && (
+                      <p className="mt-1 text-sm text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        {errors.lastName}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Username *
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="text"
+                        name="username"
+                        placeholder="Enter username"
+                        value={formData.username}
+                        onChange={handleInputChange}
+                        className={`w-full bg-slate-700/50 border rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all ${
+                          errors.username ? 'border-red-500' : 'border-slate-600'
+                        }`}
+                      />
+                    </div>
+                    {errors.username && (
+                      <p className="mt-1 text-sm text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        {errors.username}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Email Address *
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="email"
+                        name="email"
+                        placeholder="Enter email address"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className={`w-full bg-slate-700/50 border rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all ${
+                          errors.email ? 'border-red-500' : 'border-slate-600'
+                        }`}
+                      />
+                    </div>
+                    {errors.email && (
+                      <p className="mt-1 text-sm text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        {errors.email}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Phone Number *
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="tel"
+                        name="phone"
+                        placeholder="Enter phone number"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className={`w-full bg-slate-700/50 border rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all ${
+                          errors.phone ? 'border-red-500' : 'border-slate-600'
+                        }`}
+                      />
+                    </div>
+                    {errors.phone && (
+                      <p className="mt-1 text-sm text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        {errors.phone}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* State/Province */}
+            {activeSection === 'business' && (
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  State/Province
-                </label>
-                <div className="relative">
-                  <select
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none"
-                  >
-                    <option value="">Select...</option>
-                    <option value="ca">California</option>
-                    <option value="ny">New York</option>
-                    <option value="tx">Texas</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <h3 className="text-2xl font-bold text-white mb-8 flex items-center">
+                  <Building className="w-6 h-6 mr-3 text-orange-500" />
+                  Business Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Business Name *
+                    </label>
+                    <div className="relative">
+                      <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="text"
+                        name="businessName"
+                        placeholder="Enter business name"
+                        value={formData.businessName}
+                        onChange={handleInputChange}
+                        className={`w-full bg-slate-700/50 border rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all ${
+                          errors.businessName ? 'border-red-500' : 'border-slate-600'
+                        }`}
+                      />
+                    </div>
+                    {errors.businessName && (
+                      <p className="mt-1 text-sm text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        {errors.businessName}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Business Type
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="businessType"
+                        value={formData.businessType}
+                        onChange={handleInputChange}
+                        className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all appearance-none"
+                      >
+                        <option value="">Select business type</option>
+                        <option value="restaurant">Restaurant</option>
+                        <option value="cafe">Cafe</option>
+                        <option value="bakery">Bakery</option>
+                        <option value="food-truck">Food Truck</option>
+                        <option value="catering">Catering Service</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* ZIP/Postal Code */}
+            {activeSection === 'location' && (
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  ZIP/Postal Code
-                </label>
-                <div className="relative">
-                  <select
-                    name="zip"
-                    value={formData.zip}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none"
-                  >
-                    <option value="">Select...</option>
-                    <option value="12345">12345</option>
-                    <option value="67890">67890</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <h3 className="text-2xl font-bold text-white mb-8 flex items-center">
+                  <MapPin className="w-6 h-6 mr-3 text-orange-500" />
+                  Location Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Country/Region
+                    </label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <select
+                        name="country"
+                        value={formData.country}
+                        onChange={handleInputChange}
+                        className="w-full bg-slate-700/50 border border-slate-600 rounded-xl pl-11 pr-10 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all appearance-none"
+                      >
+                        <option value="">Select country</option>
+                        <option value="us">United States</option>
+                        <option value="ca">Canada</option>
+                        <option value="uk">United Kingdom</option>
+                        <option value="au">Australia</option>
+                        <option value="de">Germany</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      State/Province
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="state"
+                        value={formData.state}
+                        onChange={handleInputChange}
+                        className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all appearance-none"
+                      >
+                        <option value="">Select state</option>
+                        <option value="ca">California</option>
+                        <option value="ny">New York</option>
+                        <option value="tx">Texas</option>
+                        <option value="fl">Florida</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      ZIP/Postal Code
+                    </label>
+                    <input
+                      type="text"
+                      name="zip"
+                      placeholder="Enter ZIP code"
+                      value={formData.zip}
+                      onChange={handleInputChange}
+                      className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Street Address
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-4 w-5 h-5 text-slate-400" />
+                    <textarea
+                      name="address"
+                      rows={3}
+                      placeholder="Enter complete street address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      className="w-full bg-slate-700/50 border border-slate-600 rounded-xl pl-11 pr-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all resize-none"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Description */}
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Description
-              </label>
-              <textarea
-                name="description"
-                rows={6}
-                value={formData.description}
-                onChange={handleInputChange}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-400 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-4 mt-6">
-              <button
-                onClick={handleClear}
-                className="flex items-center space-x-2 px-6 py-2 text-red-400 hover:text-red-300 transition-colors"
-              >
-                <AlertCircle className="w-4 h-4" />
-                <span>Clear</span>
-              </button>
-              <button
-                onClick={handleSave}
-                className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 px-6 py-2 rounded-lg text-white transition-colors"
-              >
-                <FileText className="w-4 h-4" />
-                <span>Save</span>
-              </button>
-            </div>
+            {activeSection === 'additional' && (
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-8 flex items-center">
+                  <FileText className="w-6 h-6 mr-3 text-orange-500" />
+                  Additional Information
+                </h3>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    rows={6}
+                    placeholder="Enter a brief description about the seller or business..."
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:border-slate-500 transition-all resize-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* Footer */}
-          <div className="mt-8 text-center text-sm text-slate-400">
-            Designed, crafted and coded with ❤️ by Coderthemes.com
-          </div>
-        </main>
-      {/* Theme Toggle Button */}
-      <button className="fixed bottom-6 right-6 w-12 h-12 bg-orange-500 hover:bg-orange-600 rounded-full flex items-center justify-center text-white shadow-lg transition-colors">
-        <Sun className="w-6 h-6" />
-      </button>
+        {/* Footer */}
+        <div className="mt-8 text-center text-sm text-slate-500">
+          <p>© 2024 FoodSewa Admin Panel. All rights reserved.</p>
+        </div>
+        {/* Theme Toggle Button */}
+        <button className="fixed bottom-6 right-6 w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+          <Sun className="w-5 h-5" />
+        </button>
 
-      {/* Scroll to Top Button */}
-      <button className="fixed bottom-24 right-6 w-10 h-10 bg-slate-700 hover:bg-slate-600 rounded-full flex items-center justify-center text-white shadow-lg transition-colors">
-        <ArrowUp className="w-4 h-4" />
-      </button>
-    </div>
-  );
-}
+        {/* Scroll to Top Button */}
+        <button className="fixed bottom-6 right-20 w-12 h-12 bg-slate-700/80 hover:bg-slate-600/80 backdrop-blur-sm rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      </div>
+      </div>
+    );
+  }
