@@ -1,81 +1,149 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
+import { authenticate, restaurantOnly } from '@/middleware/auth';
+import { connectDB } from '@/lib/mongodb';
 import Restaurant from '@/models/Restaurant';
-import { verifyToken } from '@/middleware/auth';
 
 export async function GET(request) {
   try {
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
     
-    const user = await verifyToken(request);
-    if (!user || user.role !== 'restaurant') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    request.user = user;
 
-    const restaurant = await Restaurant.findOne({ userId: user.id });
+    // Find restaurant by owner
+    let restaurant = await Restaurant.findOne({ owner: request.user.id }).populate('owner', 'firstName lastName email');
+    
     if (!restaurant) {
-      return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 });
+      // Create a default restaurant profile for the user
+      restaurant = new Restaurant({
+        name: `${request.user.firstName || 'New'} Restaurant`,
+        description: 'Welcome to our restaurant! Please update your profile.',
+        cuisine: ['General'],
+        address: {
+          street: 'Please update your address',
+          city: 'City',
+          state: 'State',
+          zipCode: '00000',
+          coordinates: {
+            latitude: 0,
+            longitude: 0
+          }
+        },
+        phone: '000-000-0000',
+        email: request.user.email,
+        priceRange: '$',
+        deliveryTime: {
+          min: 30,
+          max: 60
+        },
+        operatingHours: {
+          monday: { open: '09:00', close: '21:00', isClosed: false },
+          tuesday: { open: '09:00', close: '21:00', isClosed: false },
+          wednesday: { open: '09:00', close: '21:00', isClosed: false },
+          thursday: { open: '09:00', close: '21:00', isClosed: false },
+          friday: { open: '09:00', close: '21:00', isClosed: false },
+          saturday: { open: '09:00', close: '21:00', isClosed: false },
+          sunday: { open: '09:00', close: '21:00', isClosed: false }
+        },
+        owner: request.user.id,
+        isActive: true,
+        isVerified: false
+      });
+      
+      await restaurant.save();
+      restaurant = await Restaurant.findById(restaurant._id).populate('owner', 'firstName lastName email');
     }
 
     return NextResponse.json({
       success: true,
-      restaurant: {
-        id: restaurant._id,
-        name: restaurant.name,
-        email: restaurant.email,
-        phone: restaurant.phone,
-        address: restaurant.address,
-        description: restaurant.description,
-        cuisine: restaurant.cuisine,
-        openingHours: restaurant.openingHours,
-        rating: restaurant.rating || 0,
-        totalReviews: restaurant.totalReviews || 0,
-        isActive: restaurant.isActive,
-        createdAt: restaurant.createdAt
-      }
+      restaurant
     });
   } catch (error) {
-    console.error('Profile fetch error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error fetching restaurant profile:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
 export async function PUT(request) {
   try {
+    const user = await authenticate(request);
+    restaurantOnly(user);
     await connectDB();
     
-    const user = await verifyToken(request);
-    if (!user || user.role !== 'restaurant') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    request.user = user;
     const body = await request.json();
-    const { name, phone, address, description, cuisine, openingHours } = body;
-
-    const restaurant = await Restaurant.findOneAndUpdate(
-      { userId: user.id },
-      {
-        name,
-        phone,
-        address,
-        description,
-        cuisine,
-        openingHours
-      },
-      { new: true }
-    );
-
+    
+    // Find restaurant by owner
+    const restaurant = await Restaurant.findOne({ owner: request.user.id });
+    
     if (!restaurant) {
-      return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, message: 'Restaurant not found' },
+        { status: 404 }
+      );
     }
+
+    // Update restaurant fields
+    const updateFields = {
+      name: body.name,
+      description: body.description,
+      cuisine: body.cuisine,
+      address: body.address,
+      city: body.city,
+      state: body.state,
+      zipCode: body.zipCode,
+      country: body.country,
+      phone: body.phone,
+      email: body.email,
+      website: body.website,
+      priceRange: body.priceRange,
+      deliveryFee: body.deliveryFee,
+      minimumOrderAmount: body.minimumOrderAmount,
+      deliveryRadius: body.deliveryRadius,
+      isActive: body.isActive,
+      acceptsOnlineOrders: body.acceptsOnlineOrders,
+      hasDelivery: body.hasDelivery,
+      hasPickup: body.hasPickup,
+      operatingHours: body.operatingHours,
+      bankDetails: body.bankDetails
+    };
+
+    // Remove undefined fields
+    Object.keys(updateFields).forEach(key => {
+      if (updateFields[key] === undefined) {
+        delete updateFields[key];
+      }
+    });
+
+    const updatedRestaurant = await Restaurant.findByIdAndUpdate(
+      restaurant._id,
+      updateFields,
+      { new: true, runValidators: true }
+    ).populate('owner', 'firstName lastName email');
 
     return NextResponse.json({
       success: true,
-      message: 'Profile updated successfully',
-      restaurant
+      message: 'Restaurant profile updated successfully',
+      restaurant: updatedRestaurant
     });
   } catch (error) {
-    console.error('Profile update error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error updating restaurant profile:', error);
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return NextResponse.json(
+        { success: false, message: 'Validation error', errors },
+        { status: 400 }
+      );
+    }
+    
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
