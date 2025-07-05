@@ -23,7 +23,25 @@ export const checkRestaurantProfileComplete = async () => {
     const missingFields = [];
     
     Object.keys(requiredFields).forEach(field => {
-      if (!settings[field] || settings[field].trim() === '') {
+      const value = settings[field];
+      let isEmpty = false;
+      
+      if (!value) {
+        isEmpty = true;
+      } else if (typeof value === 'string') {
+        isEmpty = value.trim() === '';
+      } else if (Array.isArray(value)) {
+        isEmpty = value.length === 0;
+      } else if (typeof value === 'object') {
+        // For address object, check if it has required properties
+        if (field === 'address') {
+          isEmpty = !value.street || !value.city || !value.state || !value.zipCode;
+        } else {
+          isEmpty = Object.keys(value).length === 0;
+        }
+      }
+      
+      if (isEmpty) {
         missingFields.push(requiredFields[field]);
       }
     });
