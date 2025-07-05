@@ -30,7 +30,7 @@ export async function GET(request) {
             longitude: 0
           }
         },
-        phone: '000-000-0000',
+        phone: '+1234567890',
         email: request.user.email,
         priceRange: '$',
         deliveryTime: {
@@ -93,9 +93,6 @@ export async function PUT(request) {
       description: body.description,
       cuisine: body.cuisine,
       address: body.address,
-      city: body.city,
-      state: body.state,
-      zipCode: body.zipCode,
       country: body.country,
       phone: body.phone,
       email: body.email,

@@ -152,11 +152,11 @@ export default function RestaurantProfile() {
         setFormData({
           name: data.restaurant.name || '',
           description: data.restaurant.description || '',
-          cuisine: data.restaurant.cuisine || '',
-          address: data.restaurant.address || '',
-          city: data.restaurant.city || '',
-          state: data.restaurant.state || '',
-          zipCode: data.restaurant.zipCode || '',
+          cuisine: Array.isArray(data.restaurant.cuisine) ? data.restaurant.cuisine[0] || '' : (typeof data.restaurant.cuisine === 'string' ? data.restaurant.cuisine : ''),
+          address: data.restaurant.address?.street || '',
+          city: data.restaurant.address?.city || data.restaurant.city || '',
+          state: data.restaurant.address?.state || data.restaurant.state || '',
+          zipCode: data.restaurant.address?.zipCode || data.restaurant.zipCode || '',
           country: data.restaurant.country || '',
           phone: data.restaurant.phone || '',
           email: data.restaurant.email || '',
@@ -244,7 +244,20 @@ export default function RestaurantProfile() {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          cuisine: [formData.cuisine],
+          address: {
+            street: formData.address,
+            city: formData.city,
+            state: formData.state,
+            zipCode: formData.zipCode,
+            coordinates: {
+              latitude: 0,
+              longitude: 0
+            }
+          }
+        })
       });
 
       const data = await response.json();
@@ -287,7 +300,7 @@ export default function RestaurantProfile() {
             Cuisine Type
           </label>
           <select
-            value={formData.cuisine}
+            value={Array.isArray(formData.cuisine) ? formData.cuisine[0] || '' : (typeof formData.cuisine === 'string' ? formData.cuisine : '')}
             onChange={(e) => handleInputChange('cuisine', e.target.value)}
             className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
           >
