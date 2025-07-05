@@ -1,31 +1,13 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Notification from '@/models/Notification';
-import User from '@/models/User';
-import jwt from 'jsonwebtoken';
+import { authenticate, adminOnly } from '@/middleware/auth';
 
 export async function POST(request) {
   try {
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
-    
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, message: 'Authorization token required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.userId);
-
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json(
-        { success: false, message: 'Admin access required' },
-        { status: 403 }
-      );
-    }
 
     const sampleNotifications = [
       {
@@ -131,26 +113,9 @@ export async function POST(request) {
 
 export async function DELETE(request) {
   try {
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
-    
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, message: 'Authorization token required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.userId);
-
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json(
-        { success: false, message: 'Admin access required' },
-        { status: 403 }
-      );
-    }
 
     const result = await Notification.deleteMany({ user: user._id });
 

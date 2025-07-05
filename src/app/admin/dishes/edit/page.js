@@ -75,11 +75,12 @@ export default function EditDish() {
 
   const fetchDishData = async () => {
     try {
-      const token = localStorage.getItem('token');
+  
       const response = await fetch(`/api/admin/dishes/${dishId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -123,11 +124,11 @@ export default function EditDish() {
 
   const fetchRestaurants = async () => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch('/api/admin/restaurants', {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -201,13 +202,12 @@ export default function EditDish() {
       }
 
       // Update dish
-      const token = localStorage.getItem('token');
       const response = await fetch(`/api/admin/dishes/${dishId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
           ...formData,
           image: imageUrl,

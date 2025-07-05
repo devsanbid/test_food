@@ -10,8 +10,8 @@ import Notification from '@/models/Notification';
 // GET /api/admin/analytics - Get comprehensive analytics
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { searchParams } = new URL(request.url);
@@ -626,8 +626,8 @@ export async function GET(request) {
 // POST /api/admin/analytics - Generate custom reports
 export async function POST(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { reportType, filters, format = 'json' } = await request.json();

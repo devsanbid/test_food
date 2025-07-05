@@ -10,8 +10,8 @@ import Notification from '@/models/Notification';
 // GET /api/admin/orders - Get order details
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { searchParams } = new URL(request.url);
@@ -165,8 +165,8 @@ export async function GET(request) {
 // PUT /api/admin/orders - Update order
 export async function PUT(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { orderId, action, ...updateData } = await request.json();
@@ -391,8 +391,8 @@ export async function PUT(request) {
 // POST /api/admin/orders - Bulk operations
 export async function POST(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { action, orderIds, ...actionData } = await request.json();

@@ -7,8 +7,8 @@ import User from '@/models/User';
 
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { searchParams } = new URL(request.url);
@@ -125,8 +125,8 @@ export async function GET(request) {
 
 export async function PUT(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { orderId, action, ...updateData } = await request.json();

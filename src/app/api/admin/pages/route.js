@@ -5,8 +5,8 @@ import { connectDB } from '@/lib/mongodb';
 // GET /api/admin/pages - Get page management data
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { searchParams } = new URL(request.url);
@@ -339,8 +339,8 @@ export async function GET(request) {
 // POST /api/admin/pages - Create new page
 export async function POST(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { action, ...pageData } = await request.json();
@@ -530,8 +530,8 @@ export async function POST(request) {
 // PUT /api/admin/pages - Update page
 export async function PUT(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { pageId, action, ...updateData } = await request.json();
@@ -704,8 +704,8 @@ export async function PUT(request) {
 // DELETE /api/admin/pages - Delete page
 export async function DELETE(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { searchParams } = new URL(request.url);

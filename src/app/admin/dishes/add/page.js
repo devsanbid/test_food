@@ -56,11 +56,9 @@ export default function AddDish() {
 
   const fetchRestaurants = async () => {
     try {
-      const token = localStorage.getItem('token');
+  
       const response = await fetch('/api/admin/restaurants', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -115,7 +113,7 @@ export default function AddDish() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+
       let imageUrl = formData.image;
 
       // Upload image if file is selected
@@ -125,9 +123,7 @@ export default function AddDish() {
         
         const imageResponse = await fetch('/api/upload', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
+          credentials: 'include',
           body: imageFormData
         });
 
@@ -147,9 +143,9 @@ export default function AddDish() {
       const response = await fetch('/api/admin/dishes', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(dishData)
       });
 

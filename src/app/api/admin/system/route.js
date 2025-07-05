@@ -10,8 +10,8 @@ import Notification from '@/models/Notification';
 // GET /api/admin/system - Get system information and health
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { searchParams } = new URL(request.url);
@@ -220,8 +220,8 @@ export async function GET(request) {
 // PUT /api/admin/system - Update system settings
 export async function PUT(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { action, ...updateData } = await request.json();
@@ -357,8 +357,8 @@ export async function PUT(request) {
 // POST /api/admin/system - System operations
 export async function POST(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { action, ...actionData } = await request.json();

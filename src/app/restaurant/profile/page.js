@@ -101,6 +101,92 @@ export default function RestaurantProfile() {
   });
   const router = useRouter();
 
+  const fetchRestaurantProfile = async () => {
+    try {
+      const response = await fetch('/api/restaurant/settings?section=all', {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.settings) {
+        const settings = data.settings;
+        setProfileData({
+          restaurantName: settings.general?.name || '',
+          description: settings.general?.description || '',
+          cuisine: settings.general?.cuisine || '',
+          priceRange: '$', // Default value as not in API
+          phone: settings.general?.phone || '',
+          email: settings.general?.email || '',
+          website: settings.general?.website || '',
+          
+          address: settings.general?.address || '',
+          city: '', // Extract from address if needed
+          state: '',
+          zipCode: '',
+          country: '',
+          
+          operatingHours: settings.operational?.openingHours || {
+            monday: { open: '09:00', close: '22:00', closed: false },
+            tuesday: { open: '09:00', close: '22:00', closed: false },
+            wednesday: { open: '09:00', close: '22:00', closed: false },
+            thursday: { open: '09:00', close: '22:00', closed: false },
+            friday: { open: '09:00', close: '23:00', closed: false },
+            saturday: { open: '09:00', close: '23:00', closed: false },
+            sunday: { open: '10:00', close: '21:00', closed: false }
+          },
+          
+          services: settings.operational?.features || {
+            delivery: true,
+            pickup: true,
+            dineIn: true,
+            catering: false
+          },
+          
+          paymentMethods: settings.payment?.paymentMethods || {
+            cash: true,
+            creditCard: true,
+            debitCard: true,
+            digitalWallet: true,
+            onlinePayment: true
+          },
+          
+          socialMedia: settings.integrations?.socialMedia || {
+            facebook: '',
+            instagram: '',
+            twitter: '',
+            website: ''
+          },
+          
+          settings: {
+            acceptOrders: settings.operational?.acceptingOrders || true,
+            autoAcceptOrders: false,
+            minimumOrderAmount: settings.operational?.minimumOrderAmount || 15.00,
+            deliveryRadius: settings.operational?.deliveryRadius || 5,
+            estimatedDeliveryTime: settings.operational?.estimatedDeliveryTime || 30,
+            preparationTime: 15 // Default value
+          }
+        });
+
+        if (data.stats) {
+          setStats({
+            totalOrders: data.stats.totalOrders || 0,
+            averageRating: data.stats.averageRating || 0,
+            totalReviews: data.stats.totalReviews || 0,
+            joinDate: data.stats.joinDate ? new Date(data.stats.joinDate) : new Date()
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching restaurant profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const tabs = [
     { id: 'basic', name: 'Basic Info', icon: Store },
     { id: 'hours', name: 'Operating Hours', icon: Clock },
@@ -131,71 +217,7 @@ export default function RestaurantProfile() {
           return;
         }
         setUser(userData);
-        
-        // Mock restaurant profile data
-        setProfileData({
-          restaurantName: 'Delicious Bites Restaurant',
-          description: 'A family-owned restaurant serving authentic cuisine with fresh ingredients and traditional recipes passed down through generations.',
-          cuisine: 'Italian',
-          priceRange: '$$',
-          phone: '+1 (555) 123-4567',
-          email: 'info@deliciousbites.com',
-          website: 'https://deliciousbites.com',
-          
-          address: '123 Main Street',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10001',
-          country: 'United States',
-          
-          operatingHours: {
-            monday: { open: '11:00', close: '22:00', closed: false },
-            tuesday: { open: '11:00', close: '22:00', closed: false },
-            wednesday: { open: '11:00', close: '22:00', closed: false },
-            thursday: { open: '11:00', close: '22:00', closed: false },
-            friday: { open: '11:00', close: '23:00', closed: false },
-            saturday: { open: '11:00', close: '23:00', closed: false },
-            sunday: { open: '12:00', close: '21:00', closed: false }
-          },
-          
-          services: {
-            delivery: true,
-            pickup: true,
-            dineIn: true,
-            catering: true
-          },
-          
-          paymentMethods: {
-            cash: true,
-            creditCard: true,
-            debitCard: true,
-            digitalWallet: true,
-            onlinePayment: true
-          },
-          
-          socialMedia: {
-            facebook: 'https://facebook.com/deliciousbites',
-            instagram: 'https://instagram.com/deliciousbites',
-            twitter: 'https://twitter.com/deliciousbites',
-            website: 'https://deliciousbites.com'
-          },
-          
-          settings: {
-            acceptOrders: true,
-            autoAcceptOrders: false,
-            minimumOrderAmount: 20.00,
-            deliveryRadius: 8,
-            estimatedDeliveryTime: 35,
-            preparationTime: 20
-          }
-        });
-        
-        setStats({
-          totalOrders: 1247,
-          averageRating: 4.6,
-          totalReviews: 189,
-          joinDate: new Date('2022-03-15')
-        });
+        await fetchRestaurantProfile();
         
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -238,11 +260,87 @@ export default function RestaurantProfile() {
     }));
   };
 
-  const handleSave = () => {
-    // Here you would typically save to your backend
-    console.log('Saving profile data:', profileData);
-    setIsEditing(false);
-    // Show success message
+  const handleSave = async () => {
+    try {
+      // Update general settings
+      const generalResponse = await fetch('/api/restaurant/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          section: 'general',
+          name: profileData.restaurantName,
+          description: profileData.description,
+          cuisine: profileData.cuisine,
+          phone: profileData.phone,
+          email: profileData.email,
+          website: profileData.website,
+          address: profileData.address
+        })
+      });
+
+      // Update operational settings
+      const operationalResponse = await fetch('/api/restaurant/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          section: 'operational',
+          openingHours: profileData.operatingHours,
+          minimumOrderAmount: profileData.settings.minimumOrderAmount,
+          deliveryRadius: profileData.settings.deliveryRadius,
+          estimatedDeliveryTime: profileData.settings.estimatedDeliveryTime,
+          acceptingOrders: profileData.settings.acceptOrders,
+          features: profileData.services
+        })
+      });
+
+      // Update payment settings
+      const paymentResponse = await fetch('/api/restaurant/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          section: 'payment',
+          paymentMethods: profileData.paymentMethods
+        })
+      });
+
+      // Update integrations (social media)
+      const integrationsResponse = await fetch('/api/restaurant/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          section: 'integrations',
+          socialMedia: profileData.socialMedia
+        })
+      });
+
+      const generalData = await generalResponse.json();
+      const operationalData = await operationalResponse.json();
+      const paymentData = await paymentResponse.json();
+      const integrationsData = await integrationsResponse.json();
+
+      if (generalData.success && operationalData.success && paymentData.success && integrationsData.success) {
+        alert('Profile updated successfully!');
+        setIsEditing(false);
+        await fetchRestaurantProfile(); // Refresh data
+      } else {
+        alert('Some settings failed to update. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('An error occurred while updating profile');
+    }
   };
 
   const formatDate = (date) => {

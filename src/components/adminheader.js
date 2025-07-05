@@ -37,13 +37,12 @@ export default function YumHeader() {
 
   const fetchNotifications = async () => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch('/api/admin/notifications?limit=5', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
+    });
       
       const data = await response.json();
       if (data.success) {
@@ -69,14 +68,13 @@ export default function YumHeader() {
 
   const markNotificationAsRead = async (notificationId) => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`/api/admin/notifications/${notificationId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ isRead: true })
+        credentials: 'include',
+        body: JSON.stringify({ read: true })
       });
       
       if (response.ok) {
@@ -90,14 +88,13 @@ export default function YumHeader() {
   const markAllAsRead = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const response = await fetch('/api/admin/notifications', {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ action: 'markAsRead' })
+        credentials: 'include',
+        body: JSON.stringify({ markAllAsRead: true })
       });
       
       if (response.ok) {
@@ -112,13 +109,12 @@ export default function YumHeader() {
 
   const deleteNotification = async (notificationId) => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`/api/admin/notifications/${notificationId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
       });
       
       if (response.ok) {

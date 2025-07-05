@@ -65,13 +65,13 @@ export default function DishDetailsPage() {
   const fetchDishDetails = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+  
       
       const response = await fetch(`/api/admin/dishes/${dishId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
       });
       
       const data = await response.json();
@@ -98,14 +98,12 @@ export default function DishDetailsPage() {
     if (!confirm('Are you sure you want to delete this dish?')) return;
     
     try {
-      const token = localStorage.getItem('token');
-      
       const response = await fetch(`/api/admin/dishes/${dishId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
       });
       
       const data = await response.json();

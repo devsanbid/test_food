@@ -48,7 +48,7 @@ export async function GET(request) {
         }
 
         const restaurants = await Restaurant.find(query)
-          .populate('owner', 'firstName lastName email phone')
+          .populate('owner', 'firstName lastName email phone username')
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)
@@ -78,7 +78,7 @@ export async function GET(request) {
         }
 
         const restaurant = await Restaurant.findById(restaurantId)
-          .populate('owner', 'firstName lastName email phone')
+          .populate('owner', 'firstName lastName email phone username')
           .lean();
 
         if (!restaurant) {
@@ -194,39 +194,39 @@ export async function POST(request) {
       priceRange: '$$',
       operatingHours: {
         monday: { 
-          open: restaurantData.openingHours?.monday?.open || '09:00', 
-          close: restaurantData.openingHours?.monday?.close || '22:00', 
-          isClosed: restaurantData.openingHours?.monday?.closed || false 
+          open: restaurantData.operatingHours?.monday?.open || '09:00', 
+          close: restaurantData.operatingHours?.monday?.close || '22:00', 
+          isClosed: restaurantData.operatingHours?.monday?.closed || false 
         },
         tuesday: { 
-          open: restaurantData.openingHours?.tuesday?.open || '09:00', 
-          close: restaurantData.openingHours?.tuesday?.close || '22:00', 
-          isClosed: restaurantData.openingHours?.tuesday?.closed || false 
+          open: restaurantData.operatingHours?.tuesday?.open || '09:00', 
+          close: restaurantData.operatingHours?.tuesday?.close || '22:00', 
+          isClosed: restaurantData.operatingHours?.tuesday?.closed || false 
         },
         wednesday: { 
-          open: restaurantData.openingHours?.wednesday?.open || '09:00', 
-          close: restaurantData.openingHours?.wednesday?.close || '22:00', 
-          isClosed: restaurantData.openingHours?.wednesday?.closed || false 
+          open: restaurantData.operatingHours?.wednesday?.open || '09:00', 
+          close: restaurantData.operatingHours?.wednesday?.close || '22:00', 
+          isClosed: restaurantData.operatingHours?.wednesday?.closed || false 
         },
         thursday: { 
-          open: restaurantData.openingHours?.thursday?.open || '09:00', 
-          close: restaurantData.openingHours?.thursday?.close || '22:00', 
-          isClosed: restaurantData.openingHours?.thursday?.closed || false 
+          open: restaurantData.operatingHours?.thursday?.open || '09:00', 
+          close: restaurantData.operatingHours?.thursday?.close || '22:00', 
+          isClosed: restaurantData.operatingHours?.thursday?.closed || false 
         },
         friday: { 
-          open: restaurantData.openingHours?.friday?.open || '09:00', 
-          close: restaurantData.openingHours?.friday?.close || '22:00', 
-          isClosed: restaurantData.openingHours?.friday?.closed || false 
+          open: restaurantData.operatingHours?.friday?.open || '09:00', 
+          close: restaurantData.operatingHours?.friday?.close || '22:00', 
+          isClosed: restaurantData.operatingHours?.friday?.closed || false 
         },
         saturday: { 
-          open: restaurantData.openingHours?.saturday?.open || '09:00', 
-          close: restaurantData.openingHours?.saturday?.close || '22:00', 
-          isClosed: restaurantData.openingHours?.saturday?.closed || false 
+          open: restaurantData.operatingHours?.saturday?.open || '09:00', 
+          close: restaurantData.operatingHours?.saturday?.close || '22:00', 
+          isClosed: restaurantData.operatingHours?.saturday?.closed || false 
         },
         sunday: { 
-          open: restaurantData.openingHours?.sunday?.open || '09:00', 
-          close: restaurantData.openingHours?.sunday?.close || '22:00', 
-          isClosed: restaurantData.openingHours?.sunday?.closed || false 
+          open: restaurantData.operatingHours?.sunday?.open || '09:00', 
+          close: restaurantData.operatingHours?.sunday?.close || '22:00', 
+          isClosed: restaurantData.operatingHours?.sunday?.closed || false 
         }
       },
       deliveryTime: {

@@ -63,13 +63,12 @@ const RestaurantDetails = () => {
   const fetchRestaurantDetails = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
       const response = await fetch(`/api/admin/restaurants/${restaurantId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
       });
       
       const data = await response.json();
@@ -92,12 +91,11 @@ const RestaurantDetails = () => {
 
   const fetchOrderStats = async () => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`/api/admin/orders?action=stats&restaurantId=${restaurantId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
       });
       const data = await response.json();
       
@@ -116,13 +114,12 @@ const RestaurantDetails = () => {
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this restaurant? This action cannot be undone.')) {
       try {
-        const token = localStorage.getItem('token');
         const response = await fetch(`/api/admin/restaurants/${restaurantId}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          credentials: 'include'
         });
         
         const data = await response.json();
@@ -136,6 +133,32 @@ const RestaurantDetails = () => {
       } catch (error) {
         console.error('Error deleting restaurant:', error);
         alert('Error deleting restaurant');
+      }
+    }
+  };
+
+  const handleDeleteMenuItem = async (menuItemId) => {
+    if (window.confirm('Are you sure you want to delete this menu item?')) {
+      try {
+        const response = await fetch(`/api/admin/menu-items/${menuItemId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('Menu item deleted successfully');
+          await fetchRestaurantDetails();
+        } else {
+          alert(data.message || 'Failed to delete menu item');
+        }
+      } catch (error) {
+        console.error('Error deleting menu item:', error);
+        alert('Error deleting menu item');
       }
     }
   };
@@ -340,9 +363,12 @@ const RestaurantDetails = () => {
             <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold">Menu Items</h3>
-                <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+                <button 
+                  onClick={() => router.push(`/admin/dishes/add?restaurantId=${restaurantId}`)}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+                >
                   <Plus className="w-4 h-4" />
-                  <span>Add Dish</span>
+                  <span>Add Menu Item</span>
                 </button>
               </div>
 
@@ -387,6 +413,7 @@ const RestaurantDetails = () => {
                       <th className="text-left py-3 px-2 text-gray-400 font-medium">Price</th>
                       <th className="text-left py-3 px-2 text-gray-400 font-medium">Available</th>
                       <th className="text-left py-3 px-2 text-gray-400 font-medium">Rating</th>
+                      <th className="text-left py-3 px-2 text-gray-400 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -422,11 +449,29 @@ const RestaurantDetails = () => {
                               {renderStars(4.5)}
                             </div>
                           </td>
+                          <td className="py-4 px-2">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => router.push(`/admin/dishes/edit/${item._id}`)}
+                                className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
+                                title="Edit menu item"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMenuItem(item._id)}
+                                className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                                title="Delete menu item"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="6" className="py-8 text-center text-gray-400">
+                        <td colSpan="7" className="py-8 text-center text-gray-400">
                           No menu items found
                         </td>
                       </tr>

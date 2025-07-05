@@ -8,8 +8,8 @@ import Notification from '@/models/Notification';
 // GET /api/admin/content - Get content management data
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { searchParams } = new URL(request.url);
@@ -260,8 +260,8 @@ export async function GET(request) {
 // POST /api/admin/content - Create new content
 export async function POST(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { action, ...contentData } = await request.json();
@@ -453,8 +453,8 @@ export async function POST(request) {
 // PUT /api/admin/content - Update content
 export async function PUT(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { contentId, action, ...updateData } = await request.json();
@@ -593,8 +593,8 @@ export async function PUT(request) {
 // DELETE /api/admin/content - Delete content
 export async function DELETE(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { searchParams } = new URL(request.url);

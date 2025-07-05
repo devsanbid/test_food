@@ -9,8 +9,8 @@ import Notification from '@/models/Notification';
 // GET /api/admin/reviews - Get review details and moderation
 export async function GET(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { searchParams } = new URL(request.url);
@@ -163,8 +163,8 @@ export async function GET(request) {
 // PUT /api/admin/reviews - Moderate reviews
 export async function PUT(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { reviewId, action, ...actionData } = await request.json();
@@ -389,8 +389,8 @@ export async function PUT(request) {
 // DELETE /api/admin/reviews - Delete review
 export async function DELETE(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { searchParams } = new URL(request.url);
@@ -478,8 +478,8 @@ export async function DELETE(request) {
 // POST /api/admin/reviews - Bulk operations
 export async function POST(request) {
   try {
-    await authenticate(request);
-    await adminOnly(request);
+    const user = await authenticate(request);
+    adminOnly(user);
     await connectDB();
 
     const { action, reviewIds, ...actionData } = await request.json();

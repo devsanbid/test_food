@@ -1,18 +1,12 @@
-export const createNotification = async (userId, title, message, type = 'info') => {
+export const createNotification = async (notificationData) => {
   try {
-    const token = localStorage.getItem('token');
     const response = await fetch('/api/admin/notifications', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        title,
-        message,
-        type: type || 'general',
-        targetUserId: userId
-      })
+      credentials: 'include',
+      body: JSON.stringify(notificationData)
     });
     
     const data = await response.json();
@@ -182,13 +176,12 @@ export const formatNotificationTime = (date) => {
 
 export const markNotificationsAsRead = async (notificationIds = []) => {
   try {
-    const token = localStorage.getItem('token');
     const response = await fetch('/api/admin/notifications', {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
+      credentials: 'include',
       body: JSON.stringify({
         action: 'markAsRead',
         notificationIds
@@ -205,14 +198,13 @@ export const markNotificationsAsRead = async (notificationIds = []) => {
 
 export const deleteNotifications = async (notificationIds) => {
   try {
-    const token = localStorage.getItem('token');
     const promises = notificationIds.map(id => 
       fetch(`/api/admin/notifications/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
       })
     );
     
@@ -226,12 +218,11 @@ export const deleteNotifications = async (notificationIds) => {
 
 export const getUnreadNotificationCount = async () => {
   try {
-    const token = localStorage.getItem('token');
     const response = await fetch('/api/admin/notifications?unreadOnly=true&limit=1', {
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
-      }
+      },
+      credentials: 'include'
     });
     
     const data = await response.json();

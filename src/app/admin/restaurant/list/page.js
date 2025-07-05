@@ -118,7 +118,11 @@ const RestaurantDashboard = () => {
 
     try {
       const response = await fetch(`/api/admin/restaurants/${restaurantId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
       const data = await response.json();
 
@@ -332,7 +336,7 @@ const RestaurantDashboard = () => {
                           </span>
                         </div>
                       </div>
-                      <p className="text-gray-400 text-sm mb-4">Owner: {restaurant.owner?.name || 'N/A'}</p>
+                      <p className="text-gray-400 text-sm mb-4">Account: @{restaurant.owner?.username || 'N/A'}</p>
                       
                       <div className="space-y-3 mb-6">
                         <div className="flex items-center justify-between">
@@ -352,7 +356,12 @@ const RestaurantDashboard = () => {
                       <div className="space-y-2 mb-6">
                         <div className="flex items-start gap-2">
                           <MapPin size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
-                          <p className="text-gray-400 text-sm">{restaurant.address || 'No address provided'}</p>
+                          <p className="text-gray-400 text-sm">
+                            {restaurant.address ? 
+                              `${restaurant.address.street || ''}, ${restaurant.address.city || ''}, ${restaurant.address.state || ''} ${restaurant.address.zipCode || ''}`.replace(/^,\s*|,\s*$|,\s*,/g, '').trim() || 'No address provided'
+                              : 'No address provided'
+                            }
+                          </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <Mail size={16} className="text-gray-400" />
@@ -366,14 +375,14 @@ const RestaurantDashboard = () => {
 
                       <div className="flex gap-2">
                         <button 
-                          onClick={() => router.push(`/admin/restaurant/details?id=${restaurant._id}`)}
+                          onClick={() => router.push(`/admin/restaurant/details/${restaurant._id}`)}
                           className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
                         >
                           <Eye size={16} />
                           View
                         </button>
                         <button 
-                          onClick={() => router.push(`/admin/restaurant/edit?id=${restaurant._id}`)}
+                          onClick={() => router.push(`/admin/restaurant/edit/${restaurant._id}`)}
                           className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center"
                         >
                           <Edit size={16} />
