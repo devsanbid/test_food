@@ -260,50 +260,111 @@ export default function RestaurantProfilePage() {
                     
                     <div className="p-6">
                       <div className="flex items-start justify-between mb-3">
-                        <h3 className="text-xl font-bold text-white group-hover:text-orange-400 transition-colors duration-200">
-                          {item.name}
-                        </h3>
-                        <div className="text-orange-400 font-bold text-lg">
-                          ${item.price || '0.00'}
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold text-white group-hover:text-orange-400 transition-colors duration-200 mb-1">
+                            {item.name}
+                          </h3>
+                          <div className="flex items-center gap-2 mb-2">
+                            {item.isVegetarian && (
+                              <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded-full text-xs font-medium">
+                                Vegetarian
+                              </span>
+                            )}
+                            {item.isVegan && (
+                              <span className="bg-green-600/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
+                                Vegan
+                              </span>
+                            )}
+                            {item.spiceLevel && (
+                              <span className="bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-xs font-medium capitalize">
+                                {item.spiceLevel}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-orange-400 font-bold text-xl">
+                            ${item.price || '0.00'}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {item.isAvailable ? 'Available' : 'Out of Stock'}
+                          </div>
                         </div>
                       </div>
                       
-                      <p className="text-gray-400 mb-4">{item.description}</p>
+                      <p className="text-gray-400 mb-4 text-sm leading-relaxed">{item.description}</p>
                       
                       <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{item.prepTime || 'N/A'}</span>
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-1">
+                            <Clock className="h-4 w-4 text-orange-400" />
+                            <span>{item.preparationTime ? `${item.preparationTime} min` : item.prepTime || '15-20 min'}</span>
+                          </div>
+                          {item.category && (
+                            <div className="flex items-center space-x-1">
+                              <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                              <span className="capitalize">{item.category}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       
-                      <div className="flex items-center justify-between">
-                        {quantity > 0 ? (
-                          <div className="flex items-center space-x-3">
-                            <button
-                              onClick={() => removeFromCart(item.id)}
-                              className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors duration-200"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </button>
-                            <span className="font-medium text-lg">{quantity}</span>
-                            <button
-                              onClick={() => addToCart(item)}
-                              className="p-2 bg-orange-500 hover:bg-orange-600 rounded-full transition-colors duration-200"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </button>
+                      {item.ingredients && item.ingredients.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs text-gray-500 mb-2">Ingredients:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {item.ingredients.slice(0, 4).map((ingredient, idx) => (
+                              <span key={idx} className="bg-gray-700/50 text-gray-300 px-2 py-1 rounded text-xs">
+                                {ingredient}
+                              </span>
+                            ))}
+                            {item.ingredients.length > 4 && (
+                              <span className="text-gray-500 text-xs">+{item.ingredients.length - 4} more</span>
+                            )}
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => addToCart(item)}
-                            className="flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-6 py-3 rounded-full font-medium transition-all duration-200 transform hover:scale-105"
-                          >
-                            <ShoppingCart className="h-4 w-4" />
-                            <span>Add to Cart</span>
-                          </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-700/50">
+                         {quantity > 0 ? (
+                           <div className="flex items-center justify-between w-full">
+                             <div className="flex items-center space-x-3 bg-gray-800/80 rounded-full px-3 py-2">
+                               <button
+                                 onClick={() => removeFromCart(item.id)}
+                                 className="p-1.5 bg-gray-600 hover:bg-gray-500 rounded-full transition-colors duration-200 text-white"
+                               >
+                                 <Minus className="h-3 w-3" />
+                               </button>
+                               <span className="font-semibold text-white min-w-[2rem] text-center">{quantity}</span>
+                               <button
+                                 onClick={() => addToCart(item)}
+                                 className="p-1.5 bg-orange-500 hover:bg-orange-600 rounded-full transition-colors duration-200 text-white"
+                               >
+                                 <Plus className="h-3 w-3" />
+                               </button>
+                             </div>
+                             <div className="text-right">
+                               <div className="text-orange-400 font-bold text-sm">
+                                 ${(item.price * quantity).toFixed(2)}
+                               </div>
+                               <div className="text-xs text-gray-500">Total</div>
+                             </div>
+                           </div>
+                         ) : (
+                           <button
+                             onClick={() => addToCart(item)}
+                             disabled={!item.isAvailable}
+                             className={`w-full flex items-center justify-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-[1.02] ${
+                               item.isAvailable
+                                 ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg hover:shadow-xl'
+                                 : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                             }`}
+                           >
+                             <ShoppingCart className="h-4 w-4" />
+                             <span>{item.isAvailable ? 'Add to Cart' : 'Out of Stock'}</span>
+                           </button>
+                         )}
+                       </div>
                     </div>
                   </div>
                 );
@@ -325,7 +386,12 @@ export default function RestaurantProfilePage() {
                 </div>
                 <div className="flex items-center space-x-3">
                   <MapPin className="h-5 w-5 text-orange-400" />
-                  <span>{restaurant.address || 'N/A'}</span>
+                  <span>
+                    {restaurant.address 
+                      ? `${restaurant.address.street || ''}, ${restaurant.address.city || ''}, ${restaurant.address.state || ''} ${restaurant.address.zipCode || ''}`.replace(/^,\s*|,\s*$|,\s*,/g, '').trim() || 'N/A'
+                      : 'N/A'
+                    }
+                  </span>
                 </div>
               </div>
               

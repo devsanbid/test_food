@@ -31,11 +31,10 @@ export async function GET(request) {
 
     // Build aggregation pipeline
     const pipeline = [
-      // Match active and verified restaurants
+      // Match active restaurants (including unverified for development)
       {
         $match: {
           isActive: true,
-          isVerified: true,
           menu: { $exists: true, $ne: [] }
         }
       },
@@ -171,7 +170,6 @@ export async function GET(request) {
       {
         $match: {
           isActive: true,
-          isVerified: true,
           menu: { $exists: true, $ne: [] }
         }
       },

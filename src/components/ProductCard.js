@@ -6,6 +6,17 @@ export default function ProductCard({ dish, onAddToCart }) {
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
+  // Helper function to safely render values that might be objects
+  const safeRender = (value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (value.min !== undefined && value.max !== undefined) {
+        return `${value.min}-${value.max}`;
+      }
+      return JSON.stringify(value);
+    }
+    return value;
+  };
+
   const handleAddToCart = async () => {
     setIsAdding(true);
     await new Promise(resolve => setTimeout(resolve, 300));
@@ -25,9 +36,12 @@ export default function ProductCard({ dish, onAddToCart }) {
         <div className="relative mb-4">
           <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-700 transition-transform duration-500 group-hover:scale-110">
             <img 
-              src={dish.img} 
+              src={dish.imageUrl || dish.image || dish.img || '/placeholder-food.jpg'} 
               alt={dish.name} 
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-125" 
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-125"
+              onError={(e) => {
+                e.target.src = '/placeholder-food.jpg';
+              }}
             />
           </div>
           
@@ -45,32 +59,41 @@ export default function ProductCard({ dish, onAddToCart }) {
           </button>
           
           <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-            {dish.available} available
+            {safeRender(dish.restaurant?.name) || 'Available'}
           </div>
         </div>
 
         <div className="text-center space-y-2">
           <h3 className="font-semibold text-white text-lg leading-tight group-hover:text-orange-400 transition-colors duration-300">
-            {dish.name}
+            {safeRender(dish.name)}
           </h3>
           
           <div className="flex items-center justify-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300 delay-100">
             {[...Array(5)].map((_, i) => (
               <Star key={i} className={`w-3 h-3 ${
-                i < 4 ? 'text-yellow-400 fill-current' : 'text-gray-600'
+                i < Math.floor(dish.restaurant?.rating?.average || 4) ? 'text-yellow-400 fill-current' : 'text-gray-600'
               }`} />
             ))}
-            <span className="text-xs text-gray-400 ml-1">4.0</span>
+            <span className="text-xs text-gray-400 ml-1">
+              {dish.restaurant?.rating?.average?.toFixed(1) || '4.0'}
+            </span>
           </div>
           
           <div className="flex items-center justify-between">
             <div>
               <p className="text-orange-400 font-bold text-xl">
-                ${dish.price.toFixed(2)}
+                ${typeof dish.price === 'number' ? dish.price.toFixed(2) : parseFloat(dish.price || 0).toFixed(2)}
               </p>
               <p className="text-gray-500 text-xs">
-                {dish.available} Bowls
+                {dish.preparationTime ? `${safeRender(dish.preparationTime)} mins` : 'Quick prep'}
               </p>
+              {dish.restaurant?.deliveryTime && (
+                <p className="text-gray-600 text-xs">
+                  🚚 {typeof dish.restaurant.deliveryTime === 'object' 
+                    ? `${dish.restaurant.deliveryTime.min || 0}-${dish.restaurant.deliveryTime.max || 0} mins`
+                    : dish.restaurant.deliveryTime}
+                </p>
+              )}
             </div>
             
             <button
