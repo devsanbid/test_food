@@ -5,7 +5,7 @@ import Restaurant from '@/models/Restaurant';
 import connectDB from '@/lib/db';
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
 
   if (!id) {
     return NextResponse.json({ success: false, message: 'User ID is required' }, { status: 400 });

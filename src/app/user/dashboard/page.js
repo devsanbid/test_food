@@ -241,7 +241,12 @@ export default function UserDashboard() {
                             <span className="text-xs text-gray-300">{restaurant.rating?.average?.toFixed(1) || 'N/A'}</span>
                           </div>
                           <span className="text-gray-500 text-xs">•</span>
-                          <span className="text-gray-400 text-xs">{restaurant.deliveryTime || 'N/A'}</span>
+                          <span className="text-gray-400 text-xs">
+                            {restaurant.deliveryTime ? 
+                              `${restaurant.deliveryTime.min}-${restaurant.deliveryTime.max} min` : 
+                              'N/A'
+                            }
+                          </span>
                         </div>
                       </div>
                     </div>

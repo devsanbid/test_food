@@ -18,7 +18,7 @@ export async function GET(request, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
     
     // Extract query parameters
@@ -54,7 +54,7 @@ export async function GET(request, { params }) {
       );
     }
 
-    if (!restaurant.isActive || !restaurant.isVerified) {
+    if (!restaurant.isActive) {
       return NextResponse.json(
         { success: false, message: 'Restaurant is not available' },
         { status: 404 }
@@ -196,7 +196,7 @@ export async function POST(request, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { action } = body;
 

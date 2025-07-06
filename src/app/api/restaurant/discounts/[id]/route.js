@@ -18,7 +18,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ success: false, message: roleCheck.message }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const discount = await Discount.findOne({ 
       _id: id, 
       restaurant: authResult.user.restaurantId 
@@ -62,7 +62,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ success: false, message: roleCheck.message }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const updateData = await request.json();
 
     // Find the existing discount
@@ -146,7 +146,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ success: false, message: roleCheck.message }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     
     const deletedDiscount = await Discount.findOneAndDelete({ 
       _id: id, 

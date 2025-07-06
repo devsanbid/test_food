@@ -19,7 +19,7 @@ export async function GET(request, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Validate order ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -99,7 +99,7 @@ export async function PUT(request, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { action } = body;
 
@@ -320,7 +320,7 @@ export async function DELETE(request, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Validate order ID
     if (!mongoose.Types.ObjectId.isValid(id)) {

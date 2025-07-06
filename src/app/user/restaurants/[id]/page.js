@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Star, Clock, MapPin, Heart, ArrowLeft, Plus, Minus, ShoppingCart, Phone, Info } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+import { getRestaurantById } from '@/actions/restaurantActions';
 
 export default function RestaurantProfilePage() {
   const [user, setUser] = useState(null);
@@ -10,117 +11,38 @@ export default function RestaurantProfilePage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [cart, setCart] = useState([]);
   const [activeTab, setActiveTab] = useState('menu');
+  const [restaurant, setRestaurant] = useState(null);
+  const [menuItems, setMenuItems] = useState([]);
+  const [loadingRestaurant, setLoadingRestaurant] = useState(true);
   const router = useRouter();
   const params = useParams();
   const restaurantId = params.id;
 
-  const [restaurant] = useState({
-    id: 1,
-    name: "Ocean Delights",
-    image: "/img1.jpg",
-    coverImage: "/img1.jpg",
-    rating: 4.8,
-    reviews: 1250,
-    cuisine: "Seafood",
-    deliveryTime: "25-35 min",
-    deliveryFee: 2.99,
-    distance: "1.2 km",
-    isOpen: true,
-    phone: "+1 (555) 123-4567",
-    address: "123 Ocean Drive, Seaside City",
-    description: "Fresh seafood and ocean delicacies prepared by our expert chefs. We source our ingredients daily from local fishermen to ensure the highest quality and freshness.",
-    tags: ["Seafood", "Fresh", "Premium", "Sustainable"],
-    openingHours: {
-      monday: "11:00 AM - 10:00 PM",
-      tuesday: "11:00 AM - 10:00 PM",
-      wednesday: "11:00 AM - 10:00 PM",
-      thursday: "11:00 AM - 10:00 PM",
-      friday: "11:00 AM - 11:00 PM",
-      saturday: "10:00 AM - 11:00 PM",
-      sunday: "10:00 AM - 9:00 PM"
+  const fetchRestaurantData = async () => {
+    try {
+      setLoadingRestaurant(true);
+      const data = await getRestaurantById(restaurantId);
+      setRestaurant(data.restaurant);
+      setMenuItems(data.restaurant.menu || []);
+    } catch (error) {
+      console.error('Failed to fetch restaurant data:', error);
+      router.push('/user/restaurants');
+    } finally {
+      setLoadingRestaurant(false);
     }
-  });
-
-  const [menuItems] = useState([
-    {
-      id: 1,
-      name: "Spicy Seasoned Seafood Noodles",
-      price: 18.99,
-      image: "/seasoned.png",
-      category: "noodles",
-      description: "Fresh seafood noodles with our signature spicy seasoning blend",
-      ingredients: ["Fresh noodles", "Mixed seafood", "Spicy sauce", "Vegetables"],
-      isPopular: true,
-      prepTime: "15-20 min"
-    },
-    {
-      id: 2,
-      name: "Grilled Salmon Fillet",
-      price: 24.99,
-      image: "/Image2.png",
-      category: "main",
-      description: "Premium Atlantic salmon grilled to perfection with herbs",
-      ingredients: ["Atlantic salmon", "Herbs", "Lemon", "Vegetables"],
-      isPopular: true,
-      prepTime: "20-25 min"
-    },
-    {
-      id: 3,
-      name: "Seafood Paella",
-      price: 28.99,
-      image: "/Image3.png",
-      category: "main",
-      description: "Traditional Spanish paella with fresh seafood and saffron rice",
-      ingredients: ["Saffron rice", "Mixed seafood", "Bell peppers", "Peas"],
-      isPopular: false,
-      prepTime: "30-35 min"
-    },
-    {
-      id: 4,
-      name: "Fish Tacos",
-      price: 16.99,
-      image: "/Image5.png",
-      category: "appetizers",
-      description: "Crispy fish tacos with fresh salsa and avocado",
-      ingredients: ["Fresh fish", "Corn tortillas", "Salsa", "Avocado"],
-      isPopular: false,
-      prepTime: "10-15 min"
-    },
-    {
-      id: 5,
-      name: "Lobster Bisque",
-      price: 14.99,
-      image: "/Image6.png",
-      category: "soups",
-      description: "Rich and creamy lobster bisque with fresh herbs",
-      ingredients: ["Fresh lobster", "Cream", "Herbs", "Cognac"],
-      isPopular: true,
-      prepTime: "8-12 min"
-    },
-    {
-      id: 6,
-      name: "Chocolate Lava Cake",
-      price: 8.99,
-      image: "/spa.png",
-      category: "desserts",
-      description: "Warm chocolate cake with molten center and vanilla ice cream",
-      ingredients: ["Dark chocolate", "Vanilla ice cream", "Berries"],
-      isPopular: false,
-      prepTime: "5-8 min"
-    }
-  ]);
+  };
 
   const categories = [
     { id: 'all', name: 'All Items', count: menuItems.length },
-    { id: 'appetizers', name: 'Appetizers', count: menuItems.filter(item => item.category === 'appetizers').length },
-    { id: 'main', name: 'Main Courses', count: menuItems.filter(item => item.category === 'main').length },
-    { id: 'noodles', name: 'Noodles', count: menuItems.filter(item => item.category === 'noodles').length },
-    { id: 'soups', name: 'Soups', count: menuItems.filter(item => item.category === 'soups').length },
-    { id: 'desserts', name: 'Desserts', count: menuItems.filter(item => item.category === 'desserts').length }
+    ...restaurant?.menuCategories?.map(category => ({
+      id: category.toLowerCase(),
+      name: category.charAt(0).toUpperCase() + category.slice(1),
+      count: menuItems.filter(item => item.category === category).length
+    })) || []
   ];
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const fetchData = async () => {
       try {
         const userData = await getCurrentUser();
         if (!userData) {
@@ -128,19 +50,22 @@ export default function RestaurantProfilePage() {
           return;
         }
         setUser(userData);
+        await fetchRestaurantData();
       } catch (error) {
-        console.error('Auth check failed:', error);
+        console.error('Failed to fetch data:', error);
         router.push('/login');
       } finally {
         setLoading(false);
       }
     };
 
-    checkAuth();
+    if (restaurantId) {
+      fetchData();
+    }
     
     const savedCart = JSON.parse(localStorage.getItem('cart') || '[]');
     setCart(savedCart);
-  }, [router]);
+  }, [router, restaurantId]);
 
   const filteredMenuItems = menuItems.filter(item => 
     selectedCategory === 'all' || item.category === selectedCategory
@@ -187,10 +112,23 @@ export default function RestaurantProfilePage() {
     return item ? item.quantity : 0;
   };
 
-  if (loading) {
+  if (loading || loadingRestaurant) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-300">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!restaurant) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-300">Restaurant not found</p>
+        </div>
       </div>
     );
   }
@@ -199,7 +137,7 @@ export default function RestaurantProfilePage() {
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="relative h-80 overflow-hidden">
         <img
-          src={restaurant.coverImage}
+          src={restaurant.coverImage || restaurant.image || '/default-restaurant.jpg'}
           alt={restaurant.name}
           className="w-full h-full object-cover"
         />
@@ -219,26 +157,31 @@ export default function RestaurantProfilePage() {
               <div className="flex items-center space-x-4 text-gray-300">
                 <div className="flex items-center space-x-1">
                   <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                  <span className="font-medium">{restaurant.rating}</span>
-                  <span>({restaurant.reviews} reviews)</span>
+                  <span className="font-medium">{restaurant.rating?.average?.toFixed(1) || 'N/A'}</span>
+                  <span>({restaurant.reviewCount || 0} reviews)</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Clock className="h-5 w-5" />
-                  <span>{restaurant.deliveryTime}</span>
+                  <span>
+                          {restaurant.deliveryTime ? 
+                            `${restaurant.deliveryTime.min}-${restaurant.deliveryTime.max} min` : 
+                            'N/A'
+                          }
+                        </span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <MapPin className="h-5 w-5" />
-                  <span>{restaurant.distance}</span>
+                  <span>{restaurant.distance ? `${restaurant.distance.toFixed(1)} km` : 'N/A'}</span>
                 </div>
               </div>
             </div>
             
             <div className={`px-4 py-2 rounded-full font-medium ${
-              restaurant.isOpen 
+              restaurant.isCurrentlyOpen 
                 ? 'bg-green-500/20 text-green-400 border border-green-500/30'
                 : 'bg-red-500/20 text-red-400 border border-red-500/30'
             }`}>
-              {restaurant.isOpen ? 'Open Now' : 'Closed'}
+              {restaurant.isCurrentlyOpen ? 'Open Now' : 'Closed'}
             </div>
           </div>
         </div>
@@ -304,7 +247,7 @@ export default function RestaurantProfilePage() {
                     
                     <div className="relative overflow-hidden">
                       <img
-                        src={item.image}
+                        src={item.image || '/default-food.jpg'}
                         alt={item.name}
                         className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
                       />
@@ -321,7 +264,7 @@ export default function RestaurantProfilePage() {
                           {item.name}
                         </h3>
                         <div className="text-orange-400 font-bold text-lg">
-                          ${item.price}
+                          ${item.price || '0.00'}
                         </div>
                       </div>
                       
@@ -330,7 +273,7 @@ export default function RestaurantProfilePage() {
                       <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
                         <div className="flex items-center space-x-1">
                           <Clock className="h-4 w-4" />
-                          <span>{item.prepTime}</span>
+                          <span>{item.prepTime || 'N/A'}</span>
                         </div>
                       </div>
                       
@@ -373,43 +316,51 @@ export default function RestaurantProfilePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
               <h3 className="text-2xl font-bold mb-4 text-orange-400">About {restaurant.name}</h3>
-              <p className="text-gray-300 mb-6">{restaurant.description}</p>
+              <p className="text-gray-300 mb-6">{restaurant.description || 'No description available.'}</p>
               
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
                   <Phone className="h-5 w-5 text-orange-400" />
-                  <span>{restaurant.phone}</span>
+                  <span>{restaurant.phone || 'N/A'}</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <MapPin className="h-5 w-5 text-orange-400" />
-                  <span>{restaurant.address}</span>
+                  <span>{restaurant.address || 'N/A'}</span>
                 </div>
               </div>
               
-              <div className="mt-6">
-                <h4 className="text-lg font-semibold mb-3">Cuisine Tags</h4>
-                <div className="flex flex-wrap gap-2">
-                  {restaurant.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-gray-700/50 text-gray-300 rounded-full text-sm"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+              {restaurant.tags && restaurant.tags.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-lg font-semibold mb-3">Cuisine Tags</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {restaurant.tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-gray-700/50 text-gray-300 rounded-full text-sm"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
               <h3 className="text-2xl font-bold mb-4 text-orange-400">Opening Hours</h3>
               <div className="space-y-3">
-                {Object.entries(restaurant.openingHours).map(([day, hours]) => (
-                  <div key={day} className="flex justify-between items-center">
-                    <span className="capitalize font-medium">{day}</span>
-                    <span className="text-gray-400">{hours}</span>
-                  </div>
-                ))}
+                {restaurant.operatingHours && Object.keys(restaurant.operatingHours).length > 0 ? (
+                  Object.entries(restaurant.operatingHours).map(([day, hours]) => (
+                    <div key={day} className="flex justify-between items-center">
+                      <span className="capitalize font-medium">{day}</span>
+                      <span className="text-gray-400">
+                        {hours.isOpen ? `${hours.open} - ${hours.close}` : 'Closed'}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-400">Operating hours not available</p>
+                )}
               </div>
             </div>
           </div>

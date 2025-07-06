@@ -244,7 +244,8 @@ restaurantSchema.virtual('fullAddress').get(function() {
 // Method to check if restaurant is currently open
 restaurantSchema.methods.isCurrentlyOpen = function() {
   const now = new Date();
-  const currentDay = now.toLocaleLowerCase().substring(0, 3); // mon, tue, etc.
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDay = dayNames[now.getDay()];
   const currentTime = now.toTimeString().substring(0, 5); // HH:MM format
   
   const daySchedule = this.operatingHours[currentDay];

@@ -245,7 +245,7 @@ export default function FavoritesPage() {
                         <span className="text-orange-500 font-semibold">${dish.price.toFixed(2)}</span>
                         <div className="flex items-center">
                           <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                          <span className="text-sm">{dish.rating}</span>
+                          <span className="text-sm">{dish.rating?.average?.toFixed(1) || 'N/A'}</span>
                         </div>
                       </div>
                       <div className="flex items-center text-sm text-gray-400 mb-3">
@@ -310,13 +310,18 @@ export default function FavoritesPage() {
                         <h3 className="font-semibold text-lg">{restaurant.name}</h3>
                         <div className="flex items-center">
                           <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                          <span className="text-sm">{restaurant.rating}</span>
+                          <span className="text-sm">{restaurant.rating?.average?.toFixed(1) || 'N/A'}</span>
                         </div>
                       </div>
                       <p className="text-gray-400 text-sm mb-3">{restaurant.cuisine} • {restaurant.distance}</p>
                       <div className="flex items-center text-sm text-gray-400 mb-3">
                         <Clock className="w-4 h-4 mr-1" />
-                        <span className="mr-3">{restaurant.deliveryTime}</span>
+                        <span className="mr-3">
+                          {restaurant.deliveryTime ? 
+                            `${restaurant.deliveryTime.min}-${restaurant.deliveryTime.max} min` : 
+                            'N/A'
+                          }
+                        </span>
                         <span>Delivery: ${restaurant.deliveryFee.toFixed(2)}</span>
                       </div>
                       <div className="flex flex-wrap gap-1 mb-4">

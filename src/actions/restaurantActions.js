@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export async function getRestaurants(params = {}) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
 
     if (!token) {
@@ -60,7 +60,7 @@ export async function getRestaurants(params = {}) {
 
 export async function getRestaurantById(id) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
 
     if (!token) {
@@ -96,7 +96,7 @@ export async function getRestaurantById(id) {
 
 export async function addToFavorites(restaurantId) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
 
     if (!token) {
@@ -132,7 +132,7 @@ export async function addToFavorites(restaurantId) {
 
 export async function removeFromFavorites(restaurantId) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
 
     if (!token) {
