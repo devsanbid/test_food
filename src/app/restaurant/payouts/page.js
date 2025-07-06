@@ -52,6 +52,81 @@ export default function RestaurantPayouts() {
   
   const router = useRouter();
 
+  const fetchPayoutData = async () => {
+    try {
+      const response = await fetch(`/api/restaurant/payouts?range=${dateRange}&status=${statusFilter}`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setEarnings({
+            totalEarnings: data.data.totalEarnings,
+            pendingPayouts: data.data.pendingPayouts,
+            completedPayouts: data.data.completedPayouts,
+            currentBalance: data.data.currentBalance,
+            lastPayout: data.data.payoutHistory.length > 0 ? new Date(data.data.payoutHistory[0].date) : null,
+            nextPayout: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            commissionRate: data.data.commissionRate * 100
+          });
+          
+          setPayoutHistory(data.data.payoutHistory.map(payout => ({
+            ...payout,
+            date: new Date(payout.date),
+            amount: payout.netAmount + (payout.netAmount * data.data.commissionRate),
+            commission: payout.netAmount * data.data.commissionRate,
+            orders: payout.orderCount || 0,
+            method: payout.method || 'Bank Transfer'
+          })));
+        }
+      } else if (response.status === 401) {
+        console.error('Authentication failed');
+        router.push('/login');
+      }
+    } catch (error) {
+      console.error('Failed to fetch payout data:', error);
+    }
+  };
+
+  const fetchEarningsChart = async () => {
+    try {
+      const response = await fetch(`/api/restaurant/payouts/chart?range=${dateRange}`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setEarningsChart(data.chartData || []);
+      } else if (response.status === 401) {
+        console.error('Authentication failed for chart data');
+        router.push('/login');
+      }
+    } catch (error) {
+      console.error('Failed to fetch earnings chart:', error);
+      setEarningsChart([]);
+    }
+  };
+
+  const fetchPaymentMethods = async () => {
+    try {
+      const response = await fetch('/api/restaurant/payouts/payment-methods', {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPaymentMethods(data.paymentMethods || []);
+      } else if (response.status === 401) {
+        console.error('Authentication failed for payment methods');
+        router.push('/login');
+      }
+    } catch (error) {
+      console.error('Failed to fetch payment methods:', error);
+      setPaymentMethods([]);
+    }
+  };
+
   const tabs = [
     { id: 'overview', name: 'Overview', icon: BarChart3 },
     { id: 'payouts', name: 'Payout History', icon: CreditCard },
@@ -86,105 +161,9 @@ export default function RestaurantPayouts() {
           return;
         }
         
-        // Mock earnings data
-        setEarnings({
-          totalEarnings: 45280.50,
-          pendingPayouts: 3240.75,
-          completedPayouts: 42039.75,
-          currentBalance: 3240.75,
-          lastPayout: new Date('2024-01-15'),
-          nextPayout: new Date('2024-02-01'),
-          commissionRate: 12.5
-        });
-        
-        // Mock payout history
-        setPayoutHistory([
-          {
-            id: 'PO-2024-001',
-            amount: 2850.25,
-            status: 'completed',
-            date: new Date('2024-01-15'),
-            method: 'Bank Transfer',
-            reference: 'TXN-789456123',
-            orders: 127,
-            commission: 356.28,
-            netAmount: 2493.97
-          },
-          {
-            id: 'PO-2024-002',
-            amount: 3240.75,
-            status: 'processing',
-            date: new Date('2024-01-30'),
-            method: 'Bank Transfer',
-            reference: 'TXN-789456124',
-            orders: 145,
-            commission: 405.09,
-            netAmount: 2835.66
-          },
-          {
-            id: 'PO-2023-012',
-            amount: 2650.00,
-            status: 'completed',
-            date: new Date('2023-12-15'),
-            method: 'Bank Transfer',
-            reference: 'TXN-789456122',
-            orders: 118,
-            commission: 331.25,
-            netAmount: 2318.75
-          },
-          {
-            id: 'PO-2023-011',
-            amount: 2890.50,
-            status: 'completed',
-            date: new Date('2023-12-01'),
-            method: 'Bank Transfer',
-            reference: 'TXN-789456121',
-            orders: 132,
-            commission: 361.31,
-            netAmount: 2529.19
-          },
-          {
-            id: 'PO-2023-010',
-            amount: 1950.25,
-            status: 'failed',
-            date: new Date('2023-11-15'),
-            method: 'Bank Transfer',
-            reference: 'TXN-789456120',
-            orders: 89,
-            commission: 243.78,
-            netAmount: 1706.47
-          }
-        ]);
-        
-        // Mock earnings chart data
-        setEarningsChart([
-          { month: 'Aug', earnings: 3200, payouts: 2800 },
-          { month: 'Sep', earnings: 3800, payouts: 3200 },
-          { month: 'Oct', earnings: 4200, payouts: 3800 },
-          { month: 'Nov', earnings: 3600, payouts: 4200 },
-          { month: 'Dec', earnings: 4500, payouts: 3600 },
-          { month: 'Jan', earnings: 3900, payouts: 4500 }
-        ]);
-        
-        // Mock payment methods
-        setPaymentMethods([
-          {
-            id: 1,
-            type: 'bank',
-            name: 'Primary Bank Account',
-            details: 'Chase Bank ****1234',
-            isDefault: true,
-            status: 'verified'
-          },
-          {
-            id: 2,
-            type: 'paypal',
-            name: 'PayPal Account',
-            details: 'restaurant@example.com',
-            isDefault: false,
-            status: 'verified'
-          }
-        ]);
+        await fetchPayoutData();
+        await fetchEarningsChart();
+        await fetchPaymentMethods();
         
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -196,6 +175,45 @@ export default function RestaurantPayouts() {
 
     checkAuth();
   }, [router]);
+
+  useEffect(() => {
+    if (user && !profileIncomplete) {
+      fetchPayoutData();
+    }
+  }, [dateRange, statusFilter, user, profileIncomplete]);
+
+  const handleDateRangeChange = (newRange) => {
+    setDateRange(newRange);
+  };
+
+  const handleStatusFilterChange = (newStatus) => {
+    setStatusFilter(newStatus);
+  };
+
+  const handleExportPayouts = async () => {
+    try {
+      const response = await fetch(`/api/restaurant/payouts?range=${dateRange}&status=${statusFilter}&export=true`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `payouts-${dateRange}-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else if (response.status === 401) {
+        console.error('Authentication failed for export');
+        router.push('/login');
+      }
+    } catch (error) {
+       console.error('Failed to export payouts:', error);
+     }
+   };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -225,7 +243,10 @@ export default function RestaurantPayouts() {
   };
 
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', {
+    if (!date) return 'N/A';
+    const dateObj = date instanceof Date ? date : new Date(date);
+    if (isNaN(dateObj.getTime())) return 'Invalid Date';
+    return dateObj.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -277,7 +298,7 @@ export default function RestaurantPayouts() {
             <div className="flex items-center space-x-4">
               <select
                 value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
+                onChange={(e) => handleDateRangeChange(e.target.value)}
                 className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               >
                 <option value="week">This Week</option>
@@ -286,7 +307,10 @@ export default function RestaurantPayouts() {
                 <option value="year">This Year</option>
               </select>
               
-              <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
+              <button 
+                onClick={handleExportPayouts}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+              >
                 <Download className="h-4 w-4" />
                 <span>Export</span>
               </button>
@@ -462,7 +486,7 @@ export default function RestaurantPayouts() {
                   
                   <select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    onChange={(e) => handleStatusFilterChange(e.target.value)}
                     className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   >
                     {statusOptions.map(option => (

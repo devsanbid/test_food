@@ -55,8 +55,12 @@ export async function GET(request) {
     const discounts = await Discount.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit)
-      .lean();
+      .limit(limit);
+
+    const discountsWithStatus = discounts.map(discount => {
+      const discountObj = discount.toObject();
+      return discountObj;
+    });
 
     const total = await Discount.countDocuments(query);
 
@@ -96,7 +100,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       success: true,
-      discounts,
+      discounts: discountsWithStatus,
       stats: discountStats,
       pagination: {
         page,

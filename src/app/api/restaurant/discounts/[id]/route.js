@@ -31,9 +31,11 @@ export async function GET(request, { params }) {
       }, { status: 404 });
     }
 
+    const discountWithStatus = discount.toObject();
+
     return NextResponse.json({ 
       success: true, 
-      discount 
+      discount: discountWithStatus 
     });
 
   } catch (error) {
@@ -112,10 +114,12 @@ export async function PUT(request, { params }) {
       { new: true, runValidators: true }
     );
 
+    const discountWithStatus = updatedDiscount.toObject();
+
     return NextResponse.json({ 
       success: true, 
       message: 'Discount updated successfully',
-      discount: updatedDiscount 
+      discount: discountWithStatus 
     });
 
   } catch (error) {

@@ -95,8 +95,8 @@ export async function GET(request) {
                 $sum: {
                   $cond: [
                     { $and: [
-                      { $exists: ['$restaurantResponse', true] },
-                      { $ne: ['$restaurantResponse', null] }
+                      { $ne: ['$restaurantResponse', null] },
+                      { $ne: ['$restaurantResponse', undefined] }
                     ]},
                     1,
                     0

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -49,7 +49,125 @@ export default function RestaurantReviews() {
   });
   
   const [reviews, setReviews] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalReviews: 0,
+    hasNext: false,
+    hasPrev: false
+  });
   const router = useRouter();
+
+  // API Functions
+  const fetchReviews = async (page = 1, filters = {}) => {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+        includeStats: 'false',
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+        ...filters
+      });
+
+      const response = await fetch(`/api/restaurant/reviews?${params}`, {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch reviews');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        // Transform API data to match frontend format
+        const transformedReviews = data.reviews.map(review => ({
+          id: review._id,
+          customer: {
+            name: review.user ? `${review.user.firstName} ${review.user.lastName}` : 'Anonymous User',
+            avatar: null,
+            verified: true
+          },
+          rating: review.rating.overall,
+          title: review.comment.split('.')[0] || 'Review',
+          comment: review.comment,
+          date: new Date(review.createdAt),
+          orderItems: review.order?.items?.map(item => item.name) || [],
+          helpful: review.helpfulVotes || 0,
+          response: review.restaurantResponse ? {
+            text: review.restaurantResponse.text,
+            date: new Date(review.restaurantResponse.respondedAt),
+            author: 'Restaurant Manager'
+          } : null,
+          status: review.restaurantResponse ? 'responded' : 'pending',
+          flagged: review.flags && review.flags.length > 0,
+          verified: true
+        }));
+        
+        setReviews(transformedReviews);
+        setPagination(data.pagination);
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    }
+  };
+
+  const fetchReviewStats = async () => {
+    try {
+      const response = await fetch('/api/restaurant/reviews?includeStats=true&limit=1', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch review stats');
+      }
+
+      const data = await response.json();
+      if (data.success && data.stats) {
+        setReviewStats({
+          averageRating: data.stats.averageRating || 0,
+          totalReviews: data.stats.total || 0,
+          ratingDistribution: data.stats.ratingDistribution || {},
+          recentTrend: 0.2, // This would need to be calculated from monthly trends
+          responseRate: parseFloat(data.stats.responseRate) || 0,
+          averageResponseTime: 4.2 // This would need to be calculated separately
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching review stats:', error);
+    }
+  };
+
+  const submitReply = async (reviewId, responseText) => {
+    try {
+      const response = await fetch('/api/restaurant/reviews', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          reviewId,
+          action: 'respond',
+          response: responseText
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit reply');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        // Refresh reviews to show the new response
+        await fetchReviews(pagination.currentPage);
+        return true;
+      }
+    } catch (error) {
+      console.error('Error submitting reply:', error);
+      return false;
+    }
+  };
 
   const tabs = [
     { id: 'all', name: 'All Reviews', count: 0 },
@@ -94,145 +212,9 @@ export default function RestaurantReviews() {
           return;
         }
         
-        // Mock review stats
-        setReviewStats({
-          averageRating: 4.6,
-          totalReviews: 189,
-          ratingDistribution: {
-            5: 98,
-            4: 52,
-            3: 25,
-            2: 10,
-            1: 4
-          },
-          recentTrend: 0.2,
-          responseRate: 85,
-          averageResponseTime: 4.2
-        });
-        
-        // Mock reviews data
-        setReviews([
-          {
-            id: 'REV-001',
-            customer: {
-              name: 'Sarah Johnson',
-              avatar: null,
-              verified: true
-            },
-            rating: 5,
-            title: 'Absolutely amazing food!',
-            comment: 'The pasta was perfectly cooked and the service was exceptional. Will definitely order again!',
-            date: new Date('2024-01-28'),
-            orderItems: ['Spaghetti Carbonara', 'Caesar Salad'],
-            helpful: 12,
-            response: null,
-            status: 'pending',
-            flagged: false,
-            verified: true
-          },
-          {
-            id: 'REV-002',
-            customer: {
-              name: 'Mike Chen',
-              avatar: null,
-              verified: true
-            },
-            rating: 4,
-            title: 'Great taste, slow delivery',
-            comment: 'Food quality was excellent but delivery took longer than expected. The pizza was still hot though.',
-            date: new Date('2024-01-27'),
-            orderItems: ['Margherita Pizza', 'Garlic Bread'],
-            helpful: 8,
-            response: {
-              text: 'Thank you for your feedback! We apologize for the delay and are working to improve our delivery times.',
-              date: new Date('2024-01-27'),
-              author: 'Restaurant Manager'
-            },
-            status: 'responded',
-            flagged: false,
-            verified: true
-          },
-          {
-            id: 'REV-003',
-            customer: {
-              name: 'Emily Davis',
-              avatar: null,
-              verified: false
-            },
-            rating: 2,
-            title: 'Disappointing experience',
-            comment: 'The food was cold when it arrived and the portion sizes were smaller than expected. Not worth the price.',
-            date: new Date('2024-01-26'),
-            orderItems: ['Chicken Alfredo', 'Breadsticks'],
-            helpful: 3,
-            response: null,
-            status: 'pending',
-            flagged: true,
-            verified: false
-          },
-          {
-            id: 'REV-004',
-            customer: {
-              name: 'David Wilson',
-              avatar: null,
-              verified: true
-            },
-            rating: 5,
-            title: 'Perfect dinner!',
-            comment: 'Everything was perfect - from the appetizer to the dessert. The staff was friendly and the atmosphere was great.',
-            date: new Date('2024-01-25'),
-            orderItems: ['Grilled Salmon', 'Chocolate Cake'],
-            helpful: 15,
-            response: {
-              text: 'Thank you so much for the wonderful review! We\'re thrilled you enjoyed your dining experience.',
-              date: new Date('2024-01-25'),
-              author: 'Restaurant Manager'
-            },
-            status: 'responded',
-            flagged: false,
-            verified: true
-          },
-          {
-            id: 'REV-005',
-            customer: {
-              name: 'Lisa Brown',
-              avatar: null,
-              verified: true
-            },
-            rating: 3,
-            title: 'Average experience',
-            comment: 'Food was okay, nothing special. Service was friendly but could be faster.',
-            date: new Date('2024-01-24'),
-            orderItems: ['Burger', 'Fries'],
-            helpful: 5,
-            response: null,
-            status: 'pending',
-            flagged: false,
-            verified: true
-          },
-          {
-            id: 'REV-006',
-            customer: {
-              name: 'John Smith',
-              avatar: null,
-              verified: true
-            },
-            rating: 4,
-            title: 'Good food, great service',
-            comment: 'Really enjoyed the meal. The staff was attentive and the food came out quickly.',
-            date: new Date('2024-01-23'),
-            orderItems: ['Steak', 'Mashed Potatoes'],
-            helpful: 9,
-            response: {
-              text: 'Thank you for choosing us! We appreciate your kind words about our service.',
-              date: new Date('2024-01-23'),
-              author: 'Restaurant Manager'
-            },
-            status: 'responded',
-            flagged: false,
-            verified: true
-          }
-        ]);
+        // Fetch reviews data from API
+        await fetchReviews();
+        await fetchReviewStats();
         
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -256,6 +238,23 @@ export default function RestaurantReviews() {
     tabs[2].count = respondedCount;
     tabs[3].count = flaggedCount;
   }, [reviews]);
+
+  // Handle filter changes
+  useEffect(() => {
+    if (user) {
+      const filters = {};
+      if (ratingFilter !== 'all') {
+        filters.rating = ratingFilter;
+      }
+      if (activeTab === 'pending') {
+        filters.hasResponse = 'false';
+      } else if (activeTab === 'responded') {
+        filters.hasResponse = 'true';
+      }
+      
+      fetchReviews(1, filters);
+    }
+  }, [activeTab, ratingFilter, dateFilter, user]);
 
   const renderStars = (rating, size = 'sm') => {
     const sizeClass = size === 'lg' ? 'h-6 w-6' : 'h-4 w-4';
@@ -299,20 +298,30 @@ export default function RestaurantReviews() {
     return formatDate(date);
   };
 
+  // Client-side search filtering (API filtering handles tabs and ratings)
   const filteredReviews = reviews.filter(review => {
-    const matchesTab = activeTab === 'all' || 
-                      (activeTab === 'pending' && review.status === 'pending') ||
-                      (activeTab === 'responded' && review.status === 'responded') ||
-                      (activeTab === 'flagged' && review.flagged);
+    if (!searchTerm) return true;
     
     const matchesSearch = review.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          review.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          review.title.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesRating = ratingFilter === 'all' || review.rating.toString() === ratingFilter;
-    
-    return matchesTab && matchesSearch && matchesRating;
+    return matchesSearch;
   });
+
+  const handlePageChange = (newPage) => {
+    const filters = {};
+    if (ratingFilter !== 'all') {
+      filters.rating = ratingFilter;
+    }
+    if (activeTab === 'pending') {
+      filters.hasResponse = 'false';
+    } else if (activeTab === 'responded') {
+      filters.hasResponse = 'true';
+    }
+    
+    fetchReviews(newPage, filters);
+  };
 
   const handleReply = (review) => {
     setSelectedReview(review);
@@ -320,27 +329,17 @@ export default function RestaurantReviews() {
     setShowReplyModal(true);
   };
 
-  const handleSubmitReply = () => {
+  const handleSubmitReply = async () => {
     if (!replyText.trim()) return;
     
-    // Update the review with the response
-    setReviews(prev => prev.map(review => 
-      review.id === selectedReview.id 
-        ? {
-            ...review,
-            response: {
-              text: replyText,
-              date: new Date(),
-              author: 'Restaurant Manager'
-            },
-            status: 'responded'
-          }
-        : review
-    ));
-    
-    setShowReplyModal(false);
-    setSelectedReview(null);
-    setReplyText('');
+    const success = await submitReply(selectedReview.id, replyText);
+    if (success) {
+      setShowReplyModal(false);
+      setSelectedReview(null);
+      setReplyText('');
+    } else {
+      alert('Failed to submit reply. Please try again.');
+    }
   };
 
   if (loading) {
@@ -638,8 +637,66 @@ export default function RestaurantReviews() {
         </div>
       </div>
 
-      {/* Reply Modal */}
-      {showReplyModal && selectedReview && (
+      {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 mt-6">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-400">
+                Showing {((pagination.currentPage - 1) * 10) + 1} to {Math.min(pagination.currentPage * 10, pagination.totalReviews)} of {pagination.totalReviews} reviews
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={!pagination.hasPrev}
+                  className="px-3 py-2 bg-gray-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-colors"
+                >
+                  Previous
+                </button>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-3 py-2 rounded-lg transition-colors ${
+                          pageNum === pagination.currentPage
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={!pagination.hasNext}
+                  className="px-3 py-2 bg-gray-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reply Modal */}
+        {showReplyModal && selectedReview && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-2xl border border-gray-700">
             <div className="flex items-center justify-between mb-6">

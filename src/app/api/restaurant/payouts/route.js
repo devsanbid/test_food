@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb';
 import { authenticate } from '@/middleware/auth';
 import Restaurant from '@/models/Restaurant';
 import Order from '@/models/Order';
+import Payout from '@/models/Payout';
 
 export async function GET(request) {
   try {
@@ -32,6 +33,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 10;
     const range = searchParams.get('range') || 'all';
     const status = searchParams.get('status') || 'all';
+    const exportData = searchParams.get('export') === 'true';
 
     // Restaurant lookup
     const restaurant = await Restaurant.findOne({ owner: user._id });
@@ -103,6 +105,41 @@ export async function GET(request) {
     const commissionRate = 0.15; // 15% commission
     const commission = totalEarnings * commissionRate;
     const currentBalance = totalEarnings - commission;
+
+    // Handle export request
+    if (exportData) {
+      const payoutQuery = { restaurant: restaurant._id };
+      if (status !== 'all') {
+        payoutQuery.status = status;
+      }
+      if (range !== 'all' && dateFilter.createdAt) {
+        payoutQuery.createdAt = dateFilter.createdAt;
+      }
+      
+      const allPayouts = await Payout.find(payoutQuery)
+        .sort({ createdAt: -1 });
+
+      const csvData = allPayouts.map(payout => ({
+        'Payout ID': payout.payoutId,
+        'Net Amount': payout.netAmount,
+        'Status': payout.status,
+        'Payment Method': payout.paymentMethod?.type || '',
+        'Date': payout.createdAt.toISOString().split('T')[0],
+        'Reference': payout.reference
+      }));
+
+      const csv = [
+        Object.keys(csvData[0] || {}).join(','),
+        ...csvData.map(row => Object.values(row).join(','))
+      ].join('\n');
+
+      return new Response(csv, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="payouts-${range}-${new Date().toISOString().split('T')[0]}.csv"`
+        }
+      });
+    }
 
     // Fetch real payout history from the database
     const payoutQuery = { restaurant: restaurant._id };

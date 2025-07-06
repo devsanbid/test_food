@@ -373,6 +373,13 @@ export default function RestaurantDiscounts() {
   const toggleDiscountStatus = async (discountId) => {
     try {
       const discount = discounts.find(d => d.id === discountId);
+      if (!discount) {
+        console.error('Discount not found');
+        return;
+      }
+      
+      console.log('Discount object:', discount);
+      console.log('Current isActive value:', discount.isActive);
       
       const response = await fetch(`/api/restaurant/discounts/${discountId}`, {
         method: 'PUT',
@@ -390,7 +397,8 @@ export default function RestaurantDiscounts() {
         }
       } else {
         const errorData = await response.json();
-        console.error('Failed to toggle discount status:', errorData.message);
+        console.error('Failed to toggle discount status:', errorData.message || errorData.error || 'Unknown error');
+        console.error('Full error response:', errorData);
       }
     } catch (error) {
       console.error('Failed to toggle discount status:', error);
@@ -569,7 +577,7 @@ export default function RestaurantDiscounts() {
                       <div className="flex items-center space-x-3 mb-2">
                         <h3 className="text-xl font-semibold">{discount.name}</h3>
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(discount.status)}`}>
-                          {discount.status.charAt(0).toUpperCase() + discount.status.slice(1)}
+                          {discount.status ? discount.status.charAt(0).toUpperCase() + discount.status.slice(1) : 'Active'}
                         </span>
                         {!discount.isActive && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-red-400 bg-red-400/20">
