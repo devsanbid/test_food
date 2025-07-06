@@ -36,19 +36,9 @@ export default function YumNavbar() {
   const handleLogout = async () => {
     try {
       await logoutAction();
-      
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      sessionStorage.clear();
-      
       router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
-      
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      sessionStorage.clear();
-      
       router.push('/login');
     }
   };

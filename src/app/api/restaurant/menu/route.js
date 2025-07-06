@@ -27,6 +27,14 @@ export async function GET(request) {
 
     let menuItems = restaurant.menu || [];
 
+    // Handle migration from 'image' to 'imageUrl' field
+    menuItems = menuItems.map(item => {
+      if (item.image && !item.imageUrl) {
+        return { ...item.toObject(), imageUrl: item.image };
+      }
+      return item;
+    });
+
     if (category) {
       menuItems = menuItems.filter(item => item.category === category);
     }
@@ -86,7 +94,7 @@ export async function POST(request) {
     restaurantOnly(user);
 
     const body = await request.json();
-    const { name, description, price, category, images, ingredients, allergens, nutritionInfo, preparationTime, isVegetarian, isVegan, isGlutenFree, tags, customizations } = body;
+    const { name, description, price, category, images, ingredients, allergens, nutritionInfo, preparationTime, isVegetarian, isVegan, isGlutenFree, tags, customizations, imageUrl } = body;
 
     if (!name || !description || !price || !category) {
       return NextResponse.json(
@@ -119,6 +127,7 @@ export async function POST(request) {
       price: parseFloat(price),
       category,
       images: images || [],
+      imageUrl: imageUrl || '',
       ingredients: ingredients || [],
       allergens: allergens || [],
       nutritionInfo: nutritionInfo || {},
@@ -179,7 +188,7 @@ export async function PUT(request) {
       );
     }
 
-    const menuItemIndex = restaurant.menu?.findIndex(item => item.id === itemId);
+    const menuItemIndex = restaurant.menu?.findIndex(item => item.id === itemId || item._id?.toString() === itemId);
     if (menuItemIndex === -1) {
       return NextResponse.json(
         { success: false, message: 'Menu item not found' },
@@ -190,7 +199,7 @@ export async function PUT(request) {
     switch (action) {
       case 'update':
         const allowedFields = [
-          'name', 'description', 'price', 'category', 'images',
+          'name', 'description', 'price', 'category', 'images', 'imageUrl',
           'ingredients', 'allergens', 'nutritionInfo', 'preparationTime',
           'isVegetarian', 'isVegan', 'isGlutenFree', 'tags', 'customizations'
         ];
@@ -279,7 +288,7 @@ export async function DELETE(request) {
       );
     }
 
-    const menuItemIndex = restaurant.menu?.findIndex(item => item.id === itemId);
+    const menuItemIndex = restaurant.menu?.findIndex(item => item.id === itemId || item._id?.toString() === itemId);
     if (menuItemIndex === -1) {
       return NextResponse.json(
         { success: false, message: 'Menu item not found' },

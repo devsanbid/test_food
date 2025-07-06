@@ -17,10 +17,9 @@ const menuItemSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    required: [true, 'Category is required'],
-    enum: ['appetizer', 'main', 'dessert', 'beverage', 'side']
+    required: [true, 'Category is required']
   },
-  image: {
+  imageUrl: {
     type: String,
     default: '/images/default-food.jpg'
   },

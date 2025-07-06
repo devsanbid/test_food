@@ -37,6 +37,13 @@ export default function MenuManagement() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: '',
+    description: '',
+    color: '#f97316'
+  });
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -49,14 +56,18 @@ export default function MenuManagement() {
     isVegan: false,
     isGlutenFree: false,
     isAvailable: true,
-    image: null
+    image: null,
+    imageUrl: ''
   });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const router = useRouter();
 
   // API functions
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/restaurant/menu?categories=true', {
+      const response = await fetch('/api/restaurant/categories', {
         credentials: 'include'
       });
       if (response.ok) {
@@ -77,7 +88,7 @@ export default function MenuManagement() {
       });
       if (response.ok) {
         const data = await response.json();
-        return data.items || [];
+        return data.menuItems || [];
       }
       return [];
     } catch (error) {
@@ -128,6 +139,7 @@ export default function MenuManagement() {
   }, [router]);
 
   const filteredItems = menuItems.filter(item => {
+    if (!item) return false;
     const matchesSearch = item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
@@ -144,13 +156,100 @@ export default function MenuManagement() {
     }));
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Invalid file type. Only JPEG, PNG, and WebP are allowed.');
+        return;
+      }
+
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        alert('File too large. Maximum size is 5MB.');
+        return;
+      }
+
+      setImageFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async () => {
+    if (!imageFile) return null;
+    
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      formData.append('type', 'menu-item');
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        return result.url;
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      alert('Failed to upload image: ' + error.message);
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setFormData(prev => ({ ...prev, imageUrl: '' }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     
     try {
+      // Upload image first if there's a new image
+      let imageUrl = formData.imageUrl;
+      if (imageFile) {
+        imageUrl = await uploadImage();
+        if (!imageUrl) {
+          setSubmitting(false);
+          return; // Upload failed, don't proceed
+        }
+      }
+      
       const method = editingItem ? 'PUT' : 'POST';
-      const url = editingItem ? `/api/restaurant/menu/${editingItem._id}` : '/api/restaurant/menu';
+      const url = '/api/restaurant/menu';
+      
+      const requestBody = {
+        ...formData,
+        imageUrl: imageUrl,
+        ingredients: formData.ingredients ? formData.ingredients.split(',').map(i => i.trim()) : [],
+        allergens: formData.allergens ? formData.allergens.split(',').map(a => a.trim()) : []
+      };
+      
+      if (editingItem) {
+        requestBody.itemId = editingItem._id;
+        requestBody.action = 'update';
+      }
       
       const response = await fetch(url, {
         method,
@@ -158,11 +257,7 @@ export default function MenuManagement() {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({
-          ...formData,
-          ingredients: formData.ingredients ? formData.ingredients.split(',').map(i => i.trim()) : [],
-          allergens: formData.allergens ? formData.allergens.split(',').map(a => a.trim()) : []
-        })
+        body: JSON.stringify(requestBody)
       });
       
       if (response.ok) {
@@ -171,11 +266,11 @@ export default function MenuManagement() {
         if (editingItem) {
           // Update existing item in state
           setMenuItems(prev => prev.map(item => 
-            item._id === editingItem._id ? result.item : item
+            item._id === editingItem._id ? result.menuItem : item
           ));
         } else {
           // Add new item to state
-          setMenuItems(prev => [...prev, result.item]);
+          setMenuItems(prev => [...prev, result.menuItem]);
         }
         
         resetForm();
@@ -205,8 +300,11 @@ export default function MenuManagement() {
       isVegan: false,
       isGlutenFree: false,
       isAvailable: true,
-      image: null
+      image: null,
+      imageUrl: ''
     });
+    setImageFile(null);
+    setImagePreview(null);
     setShowAddModal(false);
     setEditingItem(null);
   };
@@ -224,15 +322,24 @@ export default function MenuManagement() {
       isVegetarian: item.isVegetarian || false,
       isVegan: item.isVegan || false,
       isGlutenFree: item.isGlutenFree || false,
-      isAvailable: item.isAvailable !== false
+      isAvailable: item.isAvailable !== false,
+      image: null,
+      imageUrl: item.imageUrl || ''
     });
+    // Set preview for existing image
+    if (item.imageUrl) {
+      setImagePreview(item.imageUrl);
+    } else {
+      setImagePreview(null);
+    }
+    setImageFile(null);
     setShowAddModal(true);
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this item?')) {
       try {
-        const response = await fetch(`/api/restaurant/menu/${id}`, {
+        const response = await fetch(`/api/restaurant/menu?itemId=${id}`, {
           method: 'DELETE',
           credentials: 'include'
         });
@@ -253,16 +360,16 @@ export default function MenuManagement() {
 
   const toggleAvailability = async (id) => {
     try {
-      const token = localStorage.getItem('token');
       const item = menuItems.find(item => item._id === id);
       
-      const response = await fetch(`/api/restaurant/menu/${id}`, {
+      const response = await fetch('/api/restaurant/menu', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
+          itemId: id,
           action: 'toggle-availability',
           isAvailable: !item.isAvailable
         })
@@ -271,7 +378,7 @@ export default function MenuManagement() {
       if (response.ok) {
         const result = await response.json();
         setMenuItems(prev => prev.map(item => 
-          item._id === id ? result.item : item
+          item._id === id ? result.menuItem : item
         ));
       } else {
         const error = await response.json();
@@ -281,6 +388,103 @@ export default function MenuManagement() {
     } catch (error) {
       console.error('Error toggling availability:', error);
       alert('Error updating availability. Please try again.');
+    }
+  };
+
+  // Category management functions
+  const handleCategoryInputChange = (e) => {
+    const { name, value } = e.target;
+    setCategoryFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCategorySubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    
+    try {
+      const method = editingCategory ? 'PUT' : 'POST';
+      const url = '/api/restaurant/categories';
+      
+      const body = editingCategory 
+        ? { categoryId: editingCategory.id, ...categoryFormData }
+        : categoryFormData;
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(body)
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (editingCategory) {
+          setCategories(prev => prev.map(cat => 
+            cat.id === editingCategory.id ? result.category : cat
+          ));
+        } else {
+          setCategories(prev => [...prev, result.category]);
+        }
+        
+        resetCategoryForm();
+      } else {
+        const error = await response.json();
+        console.error('Error saving category:', error.message);
+        alert('Error saving category: ' + error.message);
+      }
+    } catch (error) {
+      console.error('Error saving category:', error);
+      alert('Error saving category. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resetCategoryForm = () => {
+    setCategoryFormData({
+      name: '',
+      description: '',
+      color: '#f97316'
+    });
+    setShowCategoryModal(false);
+    setEditingCategory(null);
+  };
+
+  const handleEditCategory = (category) => {
+    setEditingCategory(category);
+    setCategoryFormData({
+      name: category.name,
+      description: category.description || '',
+      color: category.color || '#f97316'
+    });
+    setShowCategoryModal(true);
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    if (window.confirm('Are you sure you want to delete this category?')) {
+      try {
+        const response = await fetch(`/api/restaurant/categories?categoryId=${categoryId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+        } else {
+          const error = await response.json();
+          console.error('Error deleting category:', error.message);
+          alert('Error deleting category: ' + error.message);
+        }
+      } catch (error) {
+        console.error('Error deleting category:', error);
+        alert('Error deleting category. Please try again.');
+      }
     }
   };
 
@@ -334,6 +538,87 @@ export default function MenuManagement() {
             </div>
           </div>
         )}
+
+      {/* Category Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">
+                {editingCategory ? 'Edit Category' : 'Add New Category'}
+              </h2>
+              <button
+                onClick={resetCategoryForm}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCategorySubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Category Name *</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={categoryFormData.name}
+                  onChange={handleCategoryInputChange}
+                  required
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Enter category name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Description</label>
+                <textarea
+                  name="description"
+                  value={categoryFormData.description}
+                  onChange={handleCategoryInputChange}
+                  rows={3}
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Describe this category"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Color</label>
+                <input
+                  type="color"
+                  name="color"
+                  value={categoryFormData.color}
+                  onChange={handleCategoryInputChange}
+                  className="w-full h-12 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-4 pt-4">
+                <button
+                  type="button"
+                  onClick={resetCategoryForm}
+                  className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-6 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 disabled:cursor-not-allowed text-white rounded-lg flex items-center space-x-2 transition-colors"
+                >
+                  {submitting ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  <span>
+                    {submitting ? 'Saving...' : editingCategory ? 'Update Category' : 'Add Category'}
+                  </span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
         
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="lg:w-1/4">
@@ -369,7 +654,16 @@ export default function MenuManagement() {
             </div>
 
             <div className="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700">
-              <h3 className="text-lg font-semibold mb-4">Categories</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Categories</h3>
+                <button
+                  onClick={() => setShowCategoryModal(true)}
+                  className="bg-orange-500 text-white px-3 py-1 rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add
+                </button>
+              </div>
               <div className="space-y-2">
                 <button
                   onClick={() => setSelectedCategory('all')}
@@ -388,20 +682,45 @@ export default function MenuManagement() {
                   const categoryId = category._id || category.id;
                   const categoryCount = menuItems.filter(item => item.category === categoryId).length;
                   return (
-                    <button
-                      key={categoryId}
-                      onClick={() => setSelectedCategory(categoryId)}
-                      className={`w-full text-left p-3 rounded-lg transition-colors ${
-                        selectedCategory === categoryId 
-                          ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' 
-                          : 'bg-gray-700/50 hover:bg-gray-700'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span>{category.name}</span>
-                        <span className="text-sm text-gray-400">{categoryCount}</span>
+                    <div key={categoryId} className="relative group">
+                      <button
+                        onClick={() => setSelectedCategory(categoryId)}
+                        className={`w-full text-left p-3 rounded-lg transition-colors ${
+                          selectedCategory === categoryId 
+                            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' 
+                            : 'bg-gray-700/50 hover:bg-gray-700'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span>{category.name}</span>
+                          <span className="text-sm text-gray-400">{categoryCount}</span>
+                        </div>
+                      </button>
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditCategory(category);
+                            }}
+                            className="bg-blue-500 text-white p-1 rounded hover:bg-blue-600 transition-colors"
+                            title="Edit category"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCategory(categoryId);
+                            }}
+                            className="bg-red-500 text-white p-1 rounded hover:bg-red-600 transition-colors"
+                            title="Delete category"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -413,7 +732,17 @@ export default function MenuManagement() {
               {filteredItems.map(item => (
                 <div key={item._id} className="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 hover:border-gray-600 transition-colors">
                   <div className="flex justify-between items-start mb-4">
-                    <div className="text-3xl">{item.image || '🍽️'}</div>
+                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-700 flex items-center justify-center">
+                      {item.imageUrl ? (
+                        <img 
+                          src={item.imageUrl} 
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-2xl">{item.image || '🍽️'}</span>
+                      )}
+                    </div>
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => toggleAvailability(item._id)}
@@ -563,23 +892,68 @@ export default function MenuManagement() {
                 />
               </div>
               
+              {/* Image Upload Section */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Item Image</label>
+                <div className="space-y-4">
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <div className="relative inline-block">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="w-32 h-32 object-cover rounded-lg border border-gray-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Upload Button */}
+                  <div className="flex items-center space-x-4">
+                    <label className="cursor-pointer bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg px-4 py-2 flex items-center space-x-2 transition-colors">
+                      <Upload className="w-4 h-4" />
+                      <span className="text-sm">
+                        {imagePreview ? 'Change Image' : 'Upload Image'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                    {uploadingImage && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-400">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
+                        <span>Uploading...</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <p className="text-xs text-gray-400">
+                    Supported formats: JPEG, PNG, WebP. Max size: 5MB
+                  </p>
+                </div>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Category *</label>
-                  <select
+                  <input
+                    type="text"
                     name="category"
                     value={formData.category}
                     onChange={handleInputChange}
                     required
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  >
-                    <option value="">Select category</option>
-                    {categories.map(category => (
-                      <option key={category._id || category.id} value={category._id || category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Enter category name"
+                  />
                 </div>
                 
                 <div>
