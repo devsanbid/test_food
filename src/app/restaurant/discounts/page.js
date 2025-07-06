@@ -72,13 +72,9 @@ export default function RestaurantDiscounts() {
 
   const fetchDiscounts = async (status = '') => {
     try {
-      const token = localStorage.getItem('token');
       const url = status ? `/api/restaurant/discounts?status=${status}` : '/api/restaurant/discounts';
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -283,7 +279,6 @@ export default function RestaurantDiscounts() {
 
   const handleSubmitDiscount = async () => {
     try {
-      const token = localStorage.getItem('token');
       const discountData = {
         name: formData.name,
         description: formData.description,
@@ -306,9 +301,9 @@ export default function RestaurantDiscounts() {
         const response = await fetch(`/api/restaurant/discounts/${selectedDiscount.id}`, {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify(discountData)
         });
         
@@ -328,9 +323,9 @@ export default function RestaurantDiscounts() {
         const response = await fetch('/api/restaurant/discounts', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify(discountData)
         });
         
@@ -350,16 +345,14 @@ export default function RestaurantDiscounts() {
     }
   };
 
+
+
   const handleDeleteDiscount = async (discountId) => {
-    if (confirm('Are you sure you want to delete this discount?')) {
+    if (window.confirm('Are you sure you want to delete this discount?')) {
       try {
-        const token = localStorage.getItem('token');
         const response = await fetch(`/api/restaurant/discounts/${discountId}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+          credentials: 'include'
         });
         
         if (response.ok) {
@@ -379,15 +372,14 @@ export default function RestaurantDiscounts() {
 
   const toggleDiscountStatus = async (discountId) => {
     try {
-      const token = localStorage.getItem('token');
       const discount = discounts.find(d => d.id === discountId);
       
       const response = await fetch(`/api/restaurant/discounts/${discountId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ isActive: !discount.isActive })
       });
       
