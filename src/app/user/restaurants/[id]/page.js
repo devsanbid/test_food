@@ -230,11 +230,11 @@ export default function RestaurantProfilePage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredMenuItems.map((item) => {
+              {filteredMenuItems.map((item, index) => {
                 const quantity = getItemQuantity(item.id);
                 return (
                   <div
-                    key={item.id}
+                    key={item._id || item.id || `menu-item-${index}`}
                     className="bg-gray-800/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-700/50 hover:border-orange-500/50 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group"
                   >
                     {item.isPopular && (
@@ -247,7 +247,7 @@ export default function RestaurantProfilePage() {
                     
                     <div className="relative overflow-hidden">
                       <img
-                        src={item.image || '/default-food.jpg'}
+                        src={item.imageUrl || item.image || '/default-food.jpg'}
                         alt={item.name}
                         className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
                       />
@@ -335,7 +335,7 @@ export default function RestaurantProfilePage() {
                   <div className="flex flex-wrap gap-2">
                     {restaurant.tags.map((tag, index) => (
                       <span
-                        key={index}
+                        key={`${tag}-${index}`}
                         className="px-3 py-1 bg-gray-700/50 text-gray-300 rounded-full text-sm"
                       >
                         {tag}
