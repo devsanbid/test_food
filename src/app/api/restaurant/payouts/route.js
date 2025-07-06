@@ -104,49 +104,29 @@ export async function GET(request) {
     const commission = totalEarnings * commissionRate;
     const currentBalance = totalEarnings - commission;
 
-    // Generate mock payout history for demonstration
-    const mockPayoutHistory = [
-      {
-        id: 'PO-2024-001',
-        netAmount: 450.75,
-        status: 'completed',
-        date: new Date('2024-01-15'),
-        method: 'Bank Transfer'
-      },
-      {
-        id: 'PO-2024-002',
-        netAmount: 320.50,
-        status: 'pending',
-        date: new Date('2024-01-20'),
-        method: 'Bank Transfer'
-      },
-      {
-        id: 'PO-2024-003',
-        netAmount: 275.25,
-        status: 'processing',
-        date: new Date('2024-01-25'),
-        method: 'PayPal'
-      }
-    ];
-
-    // Filter mock data based on status
-    let filteredHistory = mockPayoutHistory;
+    // Fetch real payout history from the database
+    const payoutQuery = { restaurant: restaurant._id };
     if (status !== 'all') {
-      filteredHistory = mockPayoutHistory.filter(payout => payout.status === status);
+      payoutQuery.status = status;
     }
+    if (range !== 'all' && dateFilter.createdAt) {
+      payoutQuery.createdAt = dateFilter.createdAt;
+    }
+    const totalPayouts = await Payout.countDocuments(payoutQuery);
+    const payouts = await Payout.find(payoutQuery)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
 
     // Calculate summary values
-    const pendingPayouts = filteredHistory
-      .filter(p => p.status === 'pending')
-      .reduce((sum, p) => sum + p.netAmount, 0);
-    
-    const completedPayouts = filteredHistory
-      .filter(p => p.status === 'completed')
-      .reduce((sum, p) => sum + p.netAmount, 0);
-
-    // Pagination
-    const skip = (page - 1) * limit;
-    const paginatedHistory = filteredHistory.slice(skip, skip + limit);
+    const pendingPayouts = await Payout.aggregate([
+      { $match: { restaurant: restaurant._id, status: 'pending' } },
+      { $group: { _id: null, total: { $sum: '$netAmount' } } }
+    ]);
+    const completedPayouts = await Payout.aggregate([
+      { $match: { restaurant: restaurant._id, status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$netAmount' } } }
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -154,15 +134,22 @@ export async function GET(request) {
         totalEarnings,
         commission,
         currentBalance,
-        pendingPayouts,
-        completedPayouts,
+        pendingPayouts: pendingPayouts[0]?.total || 0,
+        completedPayouts: completedPayouts[0]?.total || 0,
         commissionRate,
-        payoutHistory: paginatedHistory,
+        payoutHistory: payouts.map(p => ({
+          id: p.payoutId,
+          netAmount: p.netAmount,
+          status: p.status,
+          date: p.createdAt,
+          method: p.paymentMethod?.type || '',
+          reference: p.reference
+        })),
         pagination: {
           page,
           limit,
-          total: filteredHistory.length,
-          pages: Math.ceil(filteredHistory.length / limit)
+          total: totalPayouts,
+          pages: Math.ceil(totalPayouts / limit)
         }
       }
     });

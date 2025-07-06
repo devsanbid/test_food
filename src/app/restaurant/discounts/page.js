@@ -70,11 +70,61 @@ export default function RestaurantDiscounts() {
   
   const router = useRouter();
 
+  const fetchDiscounts = async (status = '') => {
+    try {
+      const token = localStorage.getItem('token');
+      const url = status ? `/api/restaurant/discounts?status=${status}` : '/api/restaurant/discounts';
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const processedDiscounts = data.discounts.map(discount => ({
+            ...discount,
+            id: discount._id,
+            startDate: new Date(discount.startDate),
+            endDate: new Date(discount.endDate)
+          }));
+          setDiscounts(processedDiscounts);
+          setDiscountStats({
+            totalDiscounts: data.stats.totalDiscounts,
+            activeDiscounts: data.stats.activeDiscounts,
+            totalSavings: data.stats.totalRevenue,
+            redemptions: data.stats.totalRedemptions,
+            conversionRate: data.stats.totalRedemptions > 0 ? ((data.stats.totalRedemptions / data.stats.totalDiscounts) * 100).toFixed(1) : 0
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch discounts:', error);
+    }
+  };
+
+  const getTabCounts = () => {
+    const allCount = discounts.length;
+    const activeCount = discounts.filter(d => d.status === 'active').length;
+    const scheduledCount = discounts.filter(d => d.status === 'scheduled').length;
+    const expiredCount = discounts.filter(d => d.status === 'expired').length;
+    
+    return {
+      all: allCount,
+      active: activeCount,
+      scheduled: scheduledCount,
+      expired: expiredCount
+    };
+  };
+
+  const tabCounts = getTabCounts();
   const tabs = [
-    { id: 'all', name: 'All Discounts', count: 0 },
-    { id: 'active', name: 'Active', count: 0 },
-    { id: 'scheduled', name: 'Scheduled', count: 0 },
-    { id: 'expired', name: 'Expired', count: 0 }
+    { id: 'all', name: 'All Discounts', count: tabCounts.all },
+    { id: 'active', name: 'Active', count: tabCounts.active },
+    { id: 'scheduled', name: 'Scheduled', count: tabCounts.scheduled },
+    { id: 'expired', name: 'Expired', count: tabCounts.expired }
   ];
 
   const discountTypes = [
@@ -110,150 +160,7 @@ export default function RestaurantDiscounts() {
           return;
         }
         
-        // Mock discount stats
-        setDiscountStats({
-          totalDiscounts: 12,
-          activeDiscounts: 5,
-          totalSavings: 2450,
-          redemptions: 89,
-          conversionRate: 15.2
-        });
-        
-        // Mock discounts data
-        setDiscounts([
-          {
-            id: 'DISC-001',
-            name: 'Weekend Special',
-            description: '20% off on all orders above $25',
-            type: 'percentage',
-            value: 20,
-            code: 'WEEKEND20',
-            minOrderAmount: 25,
-            maxDiscount: 10,
-            usageLimit: 100,
-            usedCount: 45,
-            userLimit: 1,
-            startDate: new Date('2024-01-26'),
-            endDate: new Date('2024-01-28'),
-            applicableItems: ['all'],
-            customerSegment: 'all',
-            isActive: true,
-            status: 'expired',
-            redemptions: 45,
-            revenue: 890,
-            conversionRate: 18.5
-          },
-          {
-            id: 'DISC-002',
-            name: 'New Customer Welcome',
-            description: 'Get $5 off your first order',
-            type: 'fixed',
-            value: 5,
-            code: 'WELCOME5',
-            minOrderAmount: 15,
-            maxDiscount: 5,
-            usageLimit: 200,
-            usedCount: 23,
-            userLimit: 1,
-            startDate: new Date('2024-01-01'),
-            endDate: new Date('2024-02-29'),
-            applicableItems: ['all'],
-            customerSegment: 'new',
-            isActive: true,
-            status: 'active',
-            redemptions: 23,
-            revenue: 345,
-            conversionRate: 25.8
-          },
-          {
-            id: 'DISC-003',
-            name: 'Free Delivery Friday',
-            description: 'Free delivery on all orders',
-            type: 'free_delivery',
-            value: 0,
-            code: 'FREEDEL',
-            minOrderAmount: 0,
-            maxDiscount: 5,
-            usageLimit: 50,
-            usedCount: 12,
-            userLimit: 1,
-            startDate: new Date('2024-02-02'),
-            endDate: new Date('2024-02-02'),
-            applicableItems: ['all'],
-            customerSegment: 'all',
-            isActive: true,
-            status: 'scheduled',
-            redemptions: 0,
-            revenue: 0,
-            conversionRate: 0
-          },
-          {
-            id: 'DISC-004',
-            name: 'Pizza BOGO',
-            description: 'Buy one pizza, get one 50% off',
-            type: 'bogo',
-            value: 50,
-            code: 'PIZZABOGO',
-            minOrderAmount: 0,
-            maxDiscount: 15,
-            usageLimit: 30,
-            usedCount: 8,
-            userLimit: 2,
-            startDate: new Date('2024-01-20'),
-            endDate: new Date('2024-02-05'),
-            applicableItems: ['Pizza'],
-            customerSegment: 'all',
-            isActive: true,
-            status: 'active',
-            redemptions: 8,
-            revenue: 240,
-            conversionRate: 12.3
-          },
-          {
-            id: 'DISC-005',
-            name: 'VIP Member Exclusive',
-            description: '15% off for VIP members',
-            type: 'percentage',
-            value: 15,
-            code: 'VIP15',
-            minOrderAmount: 30,
-            maxDiscount: 20,
-            usageLimit: 100,
-            usedCount: 34,
-            userLimit: 3,
-            startDate: new Date('2024-01-15'),
-            endDate: new Date('2024-02-15'),
-            applicableItems: ['all'],
-            customerSegment: 'vip',
-            isActive: true,
-            status: 'active',
-            redemptions: 34,
-            revenue: 680,
-            conversionRate: 22.1
-          },
-          {
-            id: 'DISC-006',
-            name: 'Holiday Special',
-            description: '25% off on orders above $40',
-            type: 'percentage',
-            value: 25,
-            code: 'HOLIDAY25',
-            minOrderAmount: 40,
-            maxDiscount: 15,
-            usageLimit: 75,
-            usedCount: 75,
-            userLimit: 1,
-            startDate: new Date('2023-12-20'),
-            endDate: new Date('2023-12-31'),
-            applicableItems: ['all'],
-            customerSegment: 'all',
-            isActive: false,
-            status: 'expired',
-            redemptions: 75,
-            revenue: 1125,
-            conversionRate: 28.5
-          }
-        ]);
+        await fetchDiscounts();
         
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -374,51 +281,128 @@ export default function RestaurantDiscounts() {
     setShowEditModal(true);
   };
 
-  const handleSubmitDiscount = () => {
-    const newDiscount = {
-      id: selectedDiscount ? selectedDiscount.id : `DISC-${String(discounts.length + 1).padStart(3, '0')}`,
-      name: formData.name,
-      description: formData.description,
-      type: formData.type,
-      value: parseFloat(formData.value),
-      code: formData.code,
-      minOrderAmount: parseFloat(formData.minOrderAmount) || 0,
-      maxDiscount: parseFloat(formData.maxDiscount) || 0,
-      usageLimit: parseInt(formData.usageLimit) || 0,
-      usedCount: selectedDiscount ? selectedDiscount.usedCount : 0,
-      userLimit: parseInt(formData.userLimit) || 1,
-      startDate: new Date(formData.startDate),
-      endDate: new Date(formData.endDate),
-      applicableItems: formData.applicableItems,
-      customerSegment: formData.customerSegment,
-      isActive: formData.isActive,
-      status: new Date(formData.startDate) > new Date() ? 'scheduled' : 'active',
-      redemptions: selectedDiscount ? selectedDiscount.redemptions : 0,
-      revenue: selectedDiscount ? selectedDiscount.revenue : 0,
-      conversionRate: selectedDiscount ? selectedDiscount.conversionRate : 0
-    };
+  const handleSubmitDiscount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const discountData = {
+        name: formData.name,
+        description: formData.description,
+        type: formData.type,
+        value: parseFloat(formData.value),
+        code: formData.code,
+        minOrderAmount: parseFloat(formData.minOrderAmount) || 0,
+        maxDiscount: parseFloat(formData.maxDiscount) || 0,
+        usageLimit: parseInt(formData.usageLimit) || 0,
+        userLimit: parseInt(formData.userLimit) || 1,
+        startDate: new Date(formData.startDate),
+        endDate: new Date(formData.endDate),
+        applicableItems: formData.applicableItems,
+        customerSegment: formData.customerSegment,
+        isActive: formData.isActive
+      };
 
-    if (selectedDiscount) {
-      setDiscounts(prev => prev.map(d => d.id === selectedDiscount.id ? newDiscount : d));
-    } else {
-      setDiscounts(prev => [...prev, newDiscount]);
+      if (selectedDiscount) {
+        // Update existing discount
+        const response = await fetch(`/api/restaurant/discounts/${selectedDiscount.id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(discountData)
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            await fetchDiscounts();
+            setShowEditModal(false);
+            setSelectedDiscount(null);
+          }
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to update discount:', errorData.message);
+        }
+      } else {
+        // Create new discount
+        const response = await fetch('/api/restaurant/discounts', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(discountData)
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            await fetchDiscounts();
+            setShowCreateModal(false);
+          }
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to create discount:', errorData.message);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to submit discount:', error);
     }
-
-    setShowCreateModal(false);
-    setShowEditModal(false);
-    setSelectedDiscount(null);
   };
 
-  const handleDeleteDiscount = (discountId) => {
+  const handleDeleteDiscount = async (discountId) => {
     if (confirm('Are you sure you want to delete this discount?')) {
-      setDiscounts(prev => prev.filter(d => d.id !== discountId));
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/restaurant/discounts/${discountId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            await fetchDiscounts();
+          }
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to delete discount:', errorData.message);
+        }
+      } catch (error) {
+        console.error('Failed to delete discount:', error);
+      }
     }
   };
 
-  const toggleDiscountStatus = (discountId) => {
-    setDiscounts(prev => prev.map(d => 
-      d.id === discountId ? { ...d, isActive: !d.isActive } : d
-    ));
+  const toggleDiscountStatus = async (discountId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const discount = discounts.find(d => d.id === discountId);
+      
+      const response = await fetch(`/api/restaurant/discounts/${discountId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isActive: !discount.isActive })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          await fetchDiscounts();
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to toggle discount status:', errorData.message);
+      }
+    } catch (error) {
+      console.error('Failed to toggle discount status:', error);
+    }
   };
 
   const copyCode = (code) => {
@@ -531,7 +515,10 @@ export default function RestaurantDiscounts() {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                fetchDiscounts(tab.id === 'all' ? '' : tab.id);
+              }}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                 activeTab === tab.id 
                   ? 'bg-orange-500 text-white' 
