@@ -97,7 +97,6 @@ const paymentSchema = new mongoose.Schema({
 const orderSchema = new mongoose.Schema({
   orderNumber: {
     type: String,
-    unique: true,
     required: [true, 'Order number is required']
   },
   customer: {
@@ -264,7 +263,7 @@ const orderSchema = new mongoose.Schema({
 // Indexes for better query performance
 orderSchema.index({ customer: 1, createdAt: -1 });
 orderSchema.index({ restaurant: 1, createdAt: -1 });
-orderSchema.index({ orderNumber: 1 });
+orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ status: 1 });
 orderSchema.index({ 'payment.status': 1 });
 

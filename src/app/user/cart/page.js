@@ -2,124 +2,167 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Plus, Minus, Trash2, ArrowLeft, CreditCard, MapPin, Clock, Tag } from 'lucide-react';
-import { getCurrentUser } from '@/actions/authActions';
-import { getCart, updateQuantity, removeFromCart, applyCoupon, removeCoupon } from '@/actions/cartActions';
+import { toast } from 'react-hot-toast';
+import { 
+  getCartFromStorage, 
+  saveCartToStorage, 
+  updateCartItemQuantity, 
+  removeFromCart as removeCartItem, 
+  clearCart as clearCartStorage,
+  getCartTotal,
+  getCartItemsCount
+} from '@/utils/cartUtils';
 
 export default function CartPage() {
-  const [user, setUser] = useState(null);
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [cartData, setCartData] = useState(null);
   const [cartItems, setCartItems] = useState([]);
+  const [error, setError] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(2.50);
-  const [error, setError] = useState(null);
-  const router = useRouter();
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [orderType, setOrderType] = useState('delivery'); // 'delivery' or 'pickup'
 
   useEffect(() => {
-    const initializePage = async () => {
-      try {
-        const userData = await getCurrentUser();
-        if (!userData || userData.role !== 'user') {
-          router.push('/login');
-          return;
-        }
-        setUser(userData);
-        
-        // Fetch cart data
-        const cartResponse = await getCart();
-        if (cartResponse.success) {
-          setCartData(cartResponse.data.cart);
-          setCartItems(cartResponse.data.cart.items || []);
-          setCouponCode(cartResponse.data.cart.couponCode || '');
-          setDiscount(cartResponse.data.cart.discount || 0);
-          setDeliveryFee(cartResponse.data.cart.deliveryFee || 2.50);
-        }
-      } catch (error) {
-        console.error('Page initialization failed:', error);
-        if (error.message.includes('Unauthorized')) {
-          router.push('/login');
-        } else {
-          setError('Failed to load cart data');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    initializePage();
-  }, [router]);
+    loadCartData();
+  }, []);
 
-  const handleUpdateQuantity = async (itemIndex, newQuantity) => {
+  const loadCartData = () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Load cart data from localStorage
+      const savedCart = getCartFromStorage();
+      setCartItems(savedCart);
+      
+      // Load other cart settings from localStorage if available
+      const cartSettings = localStorage.getItem('cartSettings');
+      if (cartSettings) {
+        try {
+          const settings = JSON.parse(cartSettings);
+          setCouponCode(settings.couponCode || '');
+          setDiscount(settings.discount || 0);
+          setDeliveryFee(settings.deliveryFee || 2.50);
+          setOrderType(settings.orderType || 'delivery');
+        } catch (e) {
+          console.error('Error parsing cart settings:', e);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading cart:', error);
+      setError('Failed to load cart data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateQuantity = (itemIndex, newQuantity) => {
     if (newQuantity <= 0) {
       handleRemoveItem(itemIndex);
       return;
     }
     
     try {
-      const response = await updateQuantity(itemIndex, newQuantity);
-      if (response.success) {
-        setCartData(response.data.cart);
-        setCartItems(response.data.cart.items || []);
-      }
+      const item = cartItems[itemIndex];
+      if (!item) return;
+      
+      const updatedCart = updateCartItemQuantity(item._id, newQuantity, cartItems);
+      setCartItems(updatedCart);
+      saveCartToStorage(updatedCart);
+      
+      // Dispatch custom event to update other components
+      window.dispatchEvent(new Event('cartUpdated'));
+      
+      toast.success('Cart updated successfully');
     } catch (error) {
-      console.error('Failed to update quantity:', error);
-      setError('Failed to update item quantity');
+      console.error('Error updating cart:', error);
+      setError('Failed to update cart');
     }
   };
 
-  const handleRemoveItem = async (itemIndex) => {
+  const handleRemoveItem = (itemIndex) => {
     try {
-      const response = await removeFromCart(itemIndex);
-      if (response.success) {
-        setCartData(response.data.cart);
-        setCartItems(response.data.cart.items || []);
-      }
+      const item = cartItems[itemIndex];
+      if (!item) return;
+      
+      const updatedCart = removeCartItem(item._id, cartItems);
+      setCartItems(updatedCart);
+      saveCartToStorage(updatedCart);
+      
+      // Dispatch custom event to update other components
+      window.dispatchEvent(new Event('cartUpdated'));
+      
+      toast.success('Item removed from cart');
     } catch (error) {
-      console.error('Failed to remove item:', error);
+      console.error('Error removing item:', error);
       setError('Failed to remove item from cart');
     }
   };
 
-  const handleApplyCoupon = async () => {
+  const saveCartSettings = () => {
+    const settings = {
+      couponCode,
+      discount,
+      deliveryFee,
+      orderType
+    };
+    localStorage.setItem('cartSettings', JSON.stringify(settings));
+  };
+
+  const handleApplyCoupon = () => {
     if (!couponCode.trim()) {
-      setError('Please enter a coupon code');
+      toast.error('Please enter a coupon code');
       return;
     }
-    
+
     try {
-      const response = await applyCoupon(couponCode.trim());
-      if (response.success) {
-        setCartData(response.data.cart);
-        setCartItems(response.data.cart.items || []);
-        setDiscount(response.data.cart.discount || 0);
-        setError(null);
+      setIsApplyingCoupon(true);
+      
+      // Simple coupon validation (you can enhance this)
+      const validCoupons = {
+        'SAVE10': 0.10,
+        'WELCOME20': 0.20,
+        'STUDENT15': 0.15
+      };
+      
+      const discountRate = validCoupons[couponCode.toUpperCase()];
+      if (discountRate) {
+        const subtotal = getCartTotal(cartItems);
+        const discountAmount = subtotal * discountRate;
+        setDiscount(discountAmount);
+        saveCartSettings();
+        toast.success(`Coupon applied! ${(discountRate * 100)}% discount`);
+      } else {
+        toast.error('Invalid coupon code');
       }
     } catch (error) {
-      console.error('Failed to apply coupon:', error);
-      setError(error.message || 'Invalid coupon code');
-    }
-  };
-  
-  const handleRemoveCoupon = async () => {
-    try {
-      const response = await removeCoupon();
-      if (response.success) {
-        setCartData(response.data.cart);
-        setCartItems(response.data.cart.items || []);
-        setDiscount(0);
-        setCouponCode('');
-        setError(null);
-      }
-    } catch (error) {
-      console.error('Failed to remove coupon:', error);
-      setError('Failed to remove coupon');
+      console.error('Error applying coupon:', error);
+      toast.error('Failed to apply coupon');
+    } finally {
+      setIsApplyingCoupon(false);
     }
   };
 
-  const subtotal = cartData?.subtotal || 0;
-  const discountAmount = cartData?.discount || 0;
-  const tax = (subtotal - discountAmount) * 0.08;
-  const total = subtotal - discountAmount + deliveryFee + tax;
+  const handleRemoveCoupon = () => {
+    try {
+      setDiscount(0);
+      setCouponCode('');
+      saveCartSettings();
+      toast.success('Coupon removed');
+    } catch (error) {
+      console.error('Error removing coupon:', error);
+      toast.error('Failed to remove coupon');
+    }
+  };
+
+  const subtotal = getCartTotal(cartItems);
+  const discountAmount = discount;
+  const tax = subtotal * 0.08; // 8% tax
+  const serviceFee = subtotal * 0.03; // 3% service fee
+  const finalDeliveryFee = orderType === 'delivery' ? deliveryFee : 0;
+  const total = subtotal + tax + serviceFee + finalDeliveryFee - discountAmount;
 
   if (loading) {
     return (
@@ -129,7 +172,7 @@ export default function CartPage() {
     );
   }
 
-  if (error && !cartData) {
+  if (error && cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -156,7 +199,7 @@ export default function CartPage() {
           </button>
           <h1 className="text-3xl font-bold flex items-center">
             <ShoppingCart className="mr-3" />
-            Your Cart ({cartItems.length} items)
+            Your Cart ({getCartItemsCount(cartItems)} items)
           </h1>
         </div>
         
@@ -191,7 +234,7 @@ export default function CartPage() {
                     />
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg">{item.name}</h3>
-                      <p className="text-gray-400 text-sm">{cartData?.restaurantName || 'Restaurant'}</p>
+                      <p className="text-gray-400 text-sm">{item.restaurant?.name || 'Restaurant'}</p>
                       <p className="text-orange-500 font-semibold">${item.price.toFixed(2)}</p>
                       {item.customizations && item.customizations.length > 0 && (
                         <div className="text-xs text-gray-400 mt-1">

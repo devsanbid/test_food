@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, MapPin, CreditCard, Clock, User, Phone, Mail, Home, Building, CheckCircle } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+import { getCartFromStorage, clearCart, getCartTotal, getCartItemsCount } from '@/utils/cartUtils';
+import { toast } from 'react-hot-toast';
 
 export default function CheckoutPage() {
   const [user, setUser] = useState(null);
@@ -28,20 +30,15 @@ export default function CheckoutPage() {
     cardholderName: ''
   });
 
-  const [savedAddresses] = useState([
-    { id: 1, name: 'Home', address: '123 Main St, New York, NY 10001', phone: '+1 (555) 123-4567' },
-    { id: 2, name: 'Office', address: '456 Business Ave, New York, NY 10002', phone: '+1 (555) 987-6543' }
-  ]);
+  const [savedAddresses, setSavedAddresses] = useState([]);
 
-  const [orderItems] = useState([
-    { id: 1, name: "Spicy seasoned seafood noodles", price: 2.29, quantity: 2 },
-    { id: 2, name: "Salted pasta with mushroom sauce", price: 2.69, quantity: 1 }
-  ]);
+  const [orderItems, setOrderItems] = useState([]);
 
   const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const deliveryFee = 2.50;
   const tax = subtotal * 0.08;
-  const total = subtotal + deliveryFee + tax;
+  const serviceFee = subtotal * 0.05;
+  const total = subtotal + deliveryFee + tax + serviceFee;
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -64,7 +61,19 @@ export default function CheckoutPage() {
         setLoading(false);
       }
     };
+
+    const loadCartData = () => {
+      const cartData = getCartFromStorage();
+      if (!cartData || cartData.length === 0) {
+        toast.error('Your cart is empty');
+        router.push('/user/cart');
+        return;
+      }
+      setOrderItems(cartData);
+    };
+
     checkAuth();
+    loadCartData();
   }, [router]);
 
   const handleDeliveryChange = (field, value) => {
@@ -100,8 +109,71 @@ export default function CheckoutPage() {
       return;
     }
     
-    // Simulate order placement
-    router.push('/user/orderconfirmation');
+    try {
+       const token = localStorage.getItem('token');
+       
+       if (!token) {
+         toast.error('Please login to place an order');
+         router.push('/auth/login');
+         return;
+       }
+       
+       const orderData = {
+         orderType: 'delivery',
+         deliveryAddress: {
+           street: deliveryDetails.address,
+           city: deliveryDetails.city,
+           state: 'NY',
+           zipCode: deliveryDetails.zipCode,
+           phone: deliveryDetails.phone
+         },
+         paymentMethod: paymentMethod,
+         specialInstructions: deliveryDetails.instructions || '',
+         tip: 0
+       };
+
+       const response = await fetch('/api/user/orders', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           'Authorization': `Bearer ${token}`
+         },
+         body: JSON.stringify(orderData)
+       });
+
+       const result = await response.json();
+
+       if (result.success) {
+         // Clear cart from localStorage
+         clearCart();
+         // Dispatch cart updated event
+         window.dispatchEvent(new Event('cartUpdated'));
+         
+         toast.success('Order placed successfully!');
+         if (result.data && result.data._id) {
+           router.push(`/user/orderconfirmation/${result.data._id}`);
+         } else {
+           router.push('/user/orderconfirmation');
+         }
+       } else {
+         if (result.message && result.message.includes('jwt')) {
+           toast.error('Session expired. Please login again.');
+           localStorage.removeItem('token');
+           router.push('/auth/login');
+         } else {
+           toast.error(result.message || 'Failed to place order');
+         }
+       }
+     } catch (error) {
+       console.error('Order placement error:', error);
+       if (error.message && error.message.includes('jwt')) {
+         toast.error('Session expired. Please login again.');
+         localStorage.removeItem('token');
+         router.push('/auth/login');
+       } else {
+         toast.error('Failed to place order. Please try again.');
+       }
+     }
   };
 
   if (loading) {
@@ -381,7 +453,7 @@ export default function CheckoutPage() {
             
             <div className="space-y-3 mb-6">
               {orderItems.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
+                <div key={item._id} className="flex justify-between text-sm">
                   <span>{item.name} x{item.quantity}</span>
                   <span>${(item.price * item.quantity).toFixed(2)}</span>
                 </div>
@@ -400,6 +472,10 @@ export default function CheckoutPage() {
               <div className="flex justify-between">
                 <span>Tax</span>
                 <span>${tax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Service Fee</span>
+                <span>${serviceFee.toFixed(2)}</span>
               </div>
               <hr className="border-gray-700" />
               <div className="flex justify-between text-lg font-semibold">

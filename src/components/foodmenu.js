@@ -3,12 +3,19 @@ import React, { useState, useEffect } from 'react';
 import ProductCard from './ProductCard';
 import { getMenuItems } from '@/actions/menuActions';
 import { toast } from 'react-hot-toast';
+import { getCartFromStorage, saveCartToStorage, addToCart } from '@/utils/cartUtils';
 
 const defaultCategories = ['All', 'Hot Dishes', 'Cold Dishes', 'Soup', 'Grill', 'Appetizer', 'Dessert'];
 
 export default function FoodMenu() {
   const [activeCategory, setActiveCategory] = useState(0);
   const [cartItems, setCartItems] = useState([]);
+
+  // Load cart items from localStorage on component mount
+  useEffect(() => {
+    const savedCart = getCartFromStorage();
+    setCartItems(savedCart);
+  }, []);
   const [dishes, setDishes] = useState([]);
   const [categories, setCategories] = useState(defaultCategories);
   const [loading, setLoading] = useState(true);
@@ -61,16 +68,21 @@ export default function FoodMenu() {
 
   const handleAddToCart = (dish) => {
     setCartItems(prev => {
-      const existingItem = prev.find(item => item._id === dish._id);
-      if (existingItem) {
-        return prev.map(item => 
-          item._id === dish._id 
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prev, { ...dish, quantity: 1 }];
+      const updatedCart = addToCart(dish, prev);
+      return updatedCart;
     });
+    
+    // Save to localStorage and show toast outside of setState
+    const currentCart = getCartFromStorage();
+    const saved = saveCartToStorage(addToCart(dish, currentCart));
+    
+    if (saved) {
+      toast.success(`${dish.name} added to cart!`);
+      // Dispatch custom event for cart updates
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
+    } else {
+      toast.error('Failed to add item to cart');
+    }
   };
 
   const handleCategoryChange = (index) => {

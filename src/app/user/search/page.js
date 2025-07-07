@@ -1,8 +1,11 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Search, Filter, Star, Clock, MapPin, Heart, ShoppingCart, Mic, X, SlidersHorizontal } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+import { toast } from 'react-hot-toast';
+import { getCartFromStorage, saveCartToStorage, addToCart } from '@/utils/cartUtils';
 
 export default function SearchPage() {
   const [user, setUser] = useState(null);
@@ -256,9 +259,20 @@ export default function SearchPage() {
     console.log(`Toggle favorite for ${type} with id ${id}`);
   };
 
-  const addToCart = (dish) => {
-    // Simulate adding to cart
-    alert(`${dish.name} added to cart!`);
+  const addToCartHandler = (dish) => {
+    try {
+      const currentCart = getCartFromStorage();
+      const updatedCart = addToCart(dish, currentCart);
+      saveCartToStorage(updatedCart);
+      
+      // Dispatch custom event to update other components
+      window.dispatchEvent(new Event('cartUpdated'));
+      
+      toast.success(`${dish.name} added to cart!`);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error('Failed to add item to cart');
+    }
   };
 
   if (loading) {
@@ -469,7 +483,7 @@ export default function SearchPage() {
                         <span>{dish.prepTime}</span>
                       </div>
                       <button 
-                        onClick={() => addToCart(dish)}
+                        onClick={() => addToCartHandler(dish)}
                         className="w-full bg-orange-500 hover:bg-orange-600 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center"
                       >
                         <ShoppingCart className="mr-2 w-4 h-4" />

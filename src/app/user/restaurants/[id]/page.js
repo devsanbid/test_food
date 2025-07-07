@@ -1,9 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Image from 'next/image';
 import { Star, Clock, MapPin, Heart, ArrowLeft, Plus, Minus, ShoppingCart, Phone, Info } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { getCurrentUser } from '@/actions/authActions';
 import { getRestaurantById } from '@/actions/restaurantActions';
+import { getCartFromStorage, saveCartToStorage, addToCart, updateCartItemQuantity, removeFromCart, getCartItemsCount } from '@/utils/cartUtils';
 
 export default function RestaurantProfilePage() {
   const [user, setUser] = useState(null);
@@ -63,7 +66,8 @@ export default function RestaurantProfilePage() {
       fetchData();
     }
     
-    const savedCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    // Load cart from localStorage using utility function
+    const savedCart = getCartFromStorage();
     setCart(savedCart);
   }, [router, restaurantId]);
 
@@ -71,44 +75,52 @@ export default function RestaurantProfilePage() {
     selectedCategory === 'all' || item.category === selectedCategory
   );
 
-  const addToCart = (item) => {
-    const existingItem = cart.find(cartItem => cartItem.id === item.id);
-    let newCart;
+  const addToCartHandler = (item) => {
+    // Convert item to the expected format
+    const dishItem = {
+      _id: item.id || item._id,
+      name: item.name,
+      price: item.price,
+      imageUrl: item.image,
+      restaurant: {
+        _id: restaurant._id,
+        name: restaurant.name
+      },
+      preparationTime: item.preparationTime || 15
+    };
     
-    if (existingItem) {
-      newCart = cart.map(cartItem => 
-        cartItem.id === item.id 
-          ? { ...cartItem, quantity: cartItem.quantity + 1 }
-          : cartItem
-      );
-    } else {
-      newCart = [...cart, { ...item, quantity: 1, restaurantId: restaurant.id, restaurantName: restaurant.name }];
-    }
+    const updatedCart = addToCart(dishItem, cart);
+    setCart(updatedCart);
+    saveCartToStorage(updatedCart);
     
-    setCart(newCart);
-    localStorage.setItem('cart', JSON.stringify(newCart));
+    // Dispatch custom event to update other components
+    window.dispatchEvent(new Event('cartUpdated'));
+    
+    toast.success(`${item.name} added to cart!`);
   };
 
-  const removeFromCart = (itemId) => {
-    const existingItem = cart.find(cartItem => cartItem.id === itemId);
-    let newCart;
+  const removeFromCartHandler = (itemId) => {
+    const existingItem = cart.find(cartItem => cartItem._id === itemId || cartItem.id === itemId);
+    if (!existingItem) return;
     
-    if (existingItem && existingItem.quantity > 1) {
-      newCart = cart.map(cartItem => 
-        cartItem.id === itemId 
-          ? { ...cartItem, quantity: cartItem.quantity - 1 }
-          : cartItem
-      );
+    const actualId = existingItem._id || existingItem.id;
+    let updatedCart;
+    
+    if (existingItem.quantity > 1) {
+      updatedCart = updateCartItemQuantity(actualId, existingItem.quantity - 1, cart);
     } else {
-      newCart = cart.filter(cartItem => cartItem.id !== itemId);
+      updatedCart = removeFromCart(actualId, cart);
     }
     
-    setCart(newCart);
-    localStorage.setItem('cart', JSON.stringify(newCart));
+    setCart(updatedCart);
+    saveCartToStorage(updatedCart);
+    
+    // Dispatch custom event to update other components
+    window.dispatchEvent(new Event('cartUpdated'));
   };
 
   const getItemQuantity = (itemId) => {
-    const item = cart.find(cartItem => cartItem.id === itemId);
+    const item = cart.find(cartItem => cartItem._id === itemId || cartItem.id === itemId);
     return item ? item.quantity : 0;
   };
 
@@ -330,14 +342,14 @@ export default function RestaurantProfilePage() {
                            <div className="flex items-center justify-between w-full">
                              <div className="flex items-center space-x-3 bg-gray-800/80 rounded-full px-3 py-2">
                                <button
-                                 onClick={() => removeFromCart(item.id)}
+                                 onClick={() => removeFromCartHandler(item.id)}
                                  className="p-1.5 bg-gray-600 hover:bg-gray-500 rounded-full transition-colors duration-200 text-white"
                                >
                                  <Minus className="h-3 w-3" />
                                </button>
                                <span className="font-semibold text-white min-w-[2rem] text-center">{quantity}</span>
                                <button
-                                 onClick={() => addToCart(item)}
+                                 onClick={() => addToCartHandler(item)}
                                  className="p-1.5 bg-orange-500 hover:bg-orange-600 rounded-full transition-colors duration-200 text-white"
                                >
                                  <Plus className="h-3 w-3" />
@@ -352,7 +364,7 @@ export default function RestaurantProfilePage() {
                            </div>
                          ) : (
                            <button
-                             onClick={() => addToCart(item)}
+                             onClick={() => addToCartHandler(item)}
                              disabled={!item.isAvailable}
                              className={`w-full flex items-center justify-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-[1.02] ${
                                item.isAvailable
@@ -441,7 +453,7 @@ export default function RestaurantProfilePage() {
           >
             <div className="flex items-center space-x-2">
               <ShoppingCart className="h-6 w-6" />
-              <span className="font-medium">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
+              <span className="font-medium">{getCartItemsCount(cart)}</span>
             </div>
           </button>
         </div>

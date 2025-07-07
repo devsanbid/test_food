@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, ShoppingCart, MapPin, User, Settings, ChevronDown, X } from 'lucide-react';
+import { Search, Bell, ShoppingCart, MapPin, User, Settings, ChevronDown, X, Minus, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getCartFromStorage, getCartItemsCount, getCartTotal } from '@/utils/cartUtils';
 
 export default function UserHeader() {
   const router = useRouter();
@@ -50,11 +51,34 @@ export default function UserHeader() {
       { id: 3, title: 'Order Confirmed', message: 'Your order #12345 has been confirmed', time: '2 hours ago', read: true }
     ]);
     
-    // Sample cart items data
-    setCartItems([
-      { id: 1, name: 'Margherita Pizza', price: 12.99, quantity: 2, restaurant: 'Pizza Palace' },
-      { id: 2, name: 'Chicken Burger', price: 8.99, quantity: 1, restaurant: 'Burger Barn' }
-    ]);
+    // Load cart items from localStorage
+    const loadCartItems = () => {
+      const savedCart = getCartFromStorage();
+      setCartItems(savedCart);
+    };
+
+    loadCartItems();
+
+    // Listen for storage changes to update cart in real-time
+    const handleStorageChange = (e) => {
+      if (e.key === 'foodSewaCart') {
+        loadCartItems();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom cart update events
+    const handleCartUpdate = () => {
+      loadCartItems();
+    };
+    
+    window.addEventListener('cartUpdated', handleCartUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
     
     // Get user location
     const userLocation = localStorage.getItem('userLocation') || 'New York, NY';
@@ -146,7 +170,7 @@ export default function UserHeader() {
               <ShoppingCart size={20} />
               {cartItems.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {cartItems.length}
+                  {getCartItemsCount(cartItems)}
                 </span>
               )}
             </button>
@@ -279,7 +303,7 @@ export default function UserHeader() {
           <div ref={cartRef} className="absolute top-16 right-4 w-96 bg-gray-800 rounded-lg shadow-lg border border-gray-700 z-50">
             <div className="p-4 border-b border-gray-700">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">Cart ({cartItems.length})</h3>
+                <h3 className="text-lg font-semibold text-white">Cart ({getCartItemsCount(cartItems)})</h3>
                 <button 
                   onClick={() => setShowCart(false)}
                   className="text-gray-400 hover:text-white"
@@ -315,7 +339,7 @@ export default function UserHeader() {
                     <div className="flex items-center justify-between text-lg font-semibold">
                       <span className="text-white">Total:</span>
                       <span className="text-orange-400">
-                        ${cartItems.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2)}
+                        ${getCartTotal(cartItems).toFixed(2)}
                       </span>
                     </div>
                   </div>

@@ -36,11 +36,13 @@ export default function ProductCard({ dish, onAddToCart }) {
         <div className="relative mb-4">
           <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-700 transition-transform duration-500 group-hover:scale-110">
             <img 
-              src={dish.imageUrl || dish.image || dish.img || '/placeholder-food.jpg'} 
+              src={dish.imageUrl || dish.image || dish.img || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzNzQxNTEiLz4KICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSI4MCIgcj0iMjUiIGZpbGw9IiM2QjcyODAiLz4KICA8cGF0aCBkPSJNNzUgMTIwIFExMDAgMTAwIDEyNSAxMjAgTDEyNSAxNDAgUTEwMCAxNjAgNzUgMTQwIFoiIGZpbGw9IiM2QjcyODAiLz4KICA8Y2lyY2xlIGN4PSI4NSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjEwMCIgY3k9IjEzNSIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjExNSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDx0ZXh0IHg9IjEwMCIgeT0iMTgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K'} 
               alt={dish.name} 
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-125"
               onError={(e) => {
-                e.target.src = '/placeholder-food.jpg';
+                if (e.target.src !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzNzQxNTEiLz4KICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSI4MCIgcj0iMjUiIGZpbGw9IiM2QjcyODAiLz4KICA8cGF0aCBkPSJNNzUgMTIwIFExMDAgMTAwIDEyNSAxMjAgTDEyNSAxNDAgUTEwMCAxNjAgNzUgMTQwIFoiIGZpbGw9IiM2QjcyODAiLz4KICA8Y2lyY2xlIGN4PSI4NSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjEwMCIgY3k9IjEzNSIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjExNSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDx0ZXh0IHg9IjEwMCIgeT0iMTgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K') {
+                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzNzQxNTEiLz4KICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSI4MCIgcj0iMjUiIGZpbGw9IiM2QjcyODAiLz4KICA8cGF0aCBkPSJNNzUgMTIwIFExMDAgMTAwIDEyNSAxMjAgTDEyNSAxNDAgUTEwMCAxNjAgNzUgMTQwIFoiIGZpbGw9IiM2QjcyODAiLz4KICA8Y2lyY2xlIGN4PSI4NSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjEwMCIgY3k9IjEzNSIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjExNSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDx0ZXh0IHg9IjEwMCIgeT0iMTgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
+                }
               }}
             />
           </div>
