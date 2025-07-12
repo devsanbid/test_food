@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, ShoppingBag, Clock, MapPin, Star, Filter, Search, ChevronDown } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+import { toast } from 'react-hot-toast';
 
 export default function OrderHistory() {
   const [loading, setLoading] = useState(true);
@@ -18,7 +19,9 @@ export default function OrderHistory() {
   
   const handleReorder = async (order) => {
     try {
-      const response = await fetch(`/api/user/orders/${order.id}`, {
+      toast.loading('Adding items to cart...', { id: 'reorder' });
+      
+      const response = await fetch(`/api/user/orders/${order._id}`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -28,10 +31,10 @@ export default function OrderHistory() {
       
       const result = await response.json();
       
-      if (result.success && result.data) {
-        const orderData = result.data;
+      if (result.success && result.data && result.data.order) {
+        const orderData = result.data.order;
         const cartItems = orderData.items.map(item => ({
-          id: item.menuItem,
+          id: item.menuItem?._id || item.menuItem,
           name: item.name,
           price: item.price,
           quantity: item.quantity,
@@ -44,18 +47,22 @@ export default function OrderHistory() {
         
         window.dispatchEvent(new CustomEvent('cartUpdated'));
         
-        router.push(`/user/restaurants/${orderData.restaurant._id}`);
+        toast.success(`${cartItems.length} items added to cart!`, { id: 'reorder' });
+        
+        setTimeout(() => {
+          router.push(`/user/restaurants/${orderData.restaurant._id}`);
+        }, 1000);
       } else {
+        toast.error('Failed to reorder. Please try again.', { id: 'reorder' });
         console.error('Failed to fetch order details for reorder');
       }
     } catch (error) {
+      toast.error('Something went wrong. Please try again.', { id: 'reorder' });
       console.error('Error during reorder:', error);
     }
   };
   
-  const handleViewDetails = (orderId) => {
-    router.push(`/user/orderconfirmation/${orderId}`);
-  };
+
   
   const fetchOrders = async () => {
     try {
@@ -73,6 +80,7 @@ export default function OrderHistory() {
       if (result.success && result.data && result.data.orders) {
         const formattedOrders = result.data.orders.map(order => ({
           id: order.orderNumber || order._id,
+          _id: order._id,
           restaurant: order.restaurant?.name || 'Unknown Restaurant',
           restaurantImage: order.restaurant?.logo || '/img1.jpg',
           items: order.items?.map(item => `${item.name} ${item.quantity > 1 ? `(${item.quantity})` : ''}`) || [],
@@ -352,12 +360,6 @@ export default function OrderHistory() {
                       className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors font-medium"
                     >
                       Reorder
-                    </button>
-                    <button 
-                      onClick={() => handleViewDetails(order.id)}
-                      className="bg-gray-700 text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors font-medium"
-                    >
-                      View Details
                     </button>
                   </div>
                 </div>

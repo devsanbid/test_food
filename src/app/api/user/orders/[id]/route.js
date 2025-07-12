@@ -30,7 +30,7 @@ export async function GET(request, { params }) {
     }
 
     // Find order and populate related data
-    const order = await Order.findOne({
+    let order = await Order.findOne({
       _id: id,
       customer: user.id
     })
@@ -43,9 +43,38 @@ export async function GET(request, { params }) {
       );
     }
 
+    // Initialize tracking for legacy orders if missing
+    if (!order.tracking) {
+      await Order.updateOne(
+        { _id: order._id },
+        {
+          $set: {
+            tracking: {
+              history: [{
+                status: order.status,
+                timestamp: order.createdAt || new Date(),
+                description: `Order ${order.status}`,
+                location: 'System'
+              }],
+              currentLocation: {}
+            }
+          }
+        }
+      );
+      
+      // Refetch the order to get updated tracking data with methods intact
+      const updatedOrder = await Order.findById(order._id)
+        .populate('restaurant', 'name logo cuisine address phone email website operatingHours menu');
+      
+      if (updatedOrder) {
+        order = updatedOrder;
+      }
+    }
+
     // Manually populate menu item details from restaurant's menu
+    let populatedItems = order.items;
     if (order.restaurant && order.restaurant.menu) {
-      order.items = order.items.map(item => {
+      populatedItems = order.items.map(item => {
         const menuItem = order.restaurant.menu.find(menuItem => 
           menuItem._id.toString() === item.menuItem.toString()
         );
@@ -57,7 +86,7 @@ export async function GET(request, { params }) {
     }
 
     // Get order tracking history
-    const trackingHistory = order.tracking.history || [];
+    const trackingHistory = order.tracking?.history || [];
 
     // Check if order can be cancelled
     const canCancel = order.canCancel();
@@ -80,7 +109,10 @@ export async function GET(request, { params }) {
     return NextResponse.json({
       success: true,
       data: {
-        order,
+        order: {
+          ...order.toObject(),
+          items: populatedItems
+        },
         trackingHistory,
         canCancel,
         canRate,
@@ -158,7 +190,13 @@ export async function PUT(request, { params }) {
           refundAmount: order.pricing.total
         };
 
-        // Add tracking entry
+        // Add tracking entry (initialize if missing)
+        if (!order.tracking) {
+          order.tracking = {
+            history: [],
+            currentLocation: {}
+          };
+        }
         order.tracking.history.push({
           status: 'cancelled',
           timestamp: new Date(),

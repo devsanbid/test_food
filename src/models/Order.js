@@ -239,6 +239,34 @@ const orderSchema = new mongoose.Schema({
     cancelledAt: Date,
     refundAmount: Number
   },
+  tracking: {
+    history: [{
+      status: {
+        type: String,
+        enum: [
+          'pending',
+          'confirmed',
+          'preparing',
+          'ready',
+          'out-for-delivery',
+          'delivered',
+          'cancelled'
+        ]
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now
+      },
+      description: String,
+      location: String
+    }],
+    currentLocation: {
+      latitude: Number,
+      longitude: Number,
+      address: String,
+      lastUpdated: Date
+    }
+  },
   notifications: [{
     type: {
       type: String,
@@ -266,13 +294,27 @@ orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ status: 1 });
 orderSchema.index({ 'payment.status': 1 });
 
-// Pre-save middleware to generate order number
+// Pre-save middleware to generate order number and initialize tracking
 orderSchema.pre('save', async function(next) {
   if (!this.orderNumber) {
     const timestamp = Date.now().toString();
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     this.orderNumber = `FS${timestamp.slice(-6)}${random}`;
   }
+  
+  // Initialize tracking history for new orders
+  if (this.isNew && (!this.tracking || !this.tracking.history || this.tracking.history.length === 0)) {
+    this.tracking = {
+      history: [{
+        status: this.status || 'pending',
+        timestamp: new Date(),
+        description: `Order ${this.status || 'pending'}`,
+        location: 'System'
+      }],
+      currentLocation: {}
+    };
+  }
+  
   next();
 });
 
@@ -299,13 +341,13 @@ orderSchema.methods.calculateTotal = function() {
 };
 
 // Method to check if order can be cancelled
-orderSchema.methods.canBeCancelled = function() {
+orderSchema.methods.canCancel = function() {
   const nonCancellableStatuses = ['delivered', 'cancelled', 'refunded'];
   return !nonCancellableStatuses.includes(this.status);
 };
 
 // Method to check if order can be rated
-orderSchema.methods.canBeRated = function() {
+orderSchema.methods.canRate = function() {
   return this.status === 'delivered' && !this.rating.overall;
 };
 
