@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, MapPin, CreditCard, Clock, User, Phone, Mail, Home, Building, CheckCircle } from 'lucide-react';
 import { getCurrentUserClient } from '@/utils/authUtils';
-import { getCartFromStorage, clearCart, getCartTotal, getCartItemsCount } from '@/utils/cartUtils';
+import { getCartFromStorage, saveCartToStorage, clearCart, getCartTotal, getCartItemsCount } from '@/utils/cartUtils';
 import { toast } from 'react-hot-toast';
 
 export default function CheckoutPage() {
@@ -65,12 +65,29 @@ export default function CheckoutPage() {
     };
 
     const loadCartData = async () => {
+      console.log('Loading cart data in checkout...');
       const cartData = getCartFromStorage();
+      console.log('Cart data loaded:', cartData);
       
       if (!cartData || cartData.length === 0) {
+        console.log('Cart is empty, redirecting to cart page');
         toast.error('Your cart is empty');
         router.push('/user/cart');
         return;
+      }
+      
+      // Validate and fix cart items that might be missing the category field
+      const validatedCartData = cartData.map(item => {
+        if (!item.category) {
+          // Set a default category if missing
+          return { ...item, category: 'main' };
+        }
+        return item;
+      });
+      
+      // Update localStorage with validated data if any items were fixed
+      if (validatedCartData.some((item, index) => item.category !== cartData[index]?.category)) {
+        saveCartToStorage(validatedCartData);
       }
       
       try {
@@ -82,7 +99,7 @@ export default function CheckoutPage() {
           credentials: 'include',
           body: JSON.stringify({
             action: 'sync-cart',
-            items: cartData
+            items: validatedCartData
           })
         });
         
@@ -96,7 +113,7 @@ export default function CheckoutPage() {
         console.error('Cart sync error:', error);
       }
       
-      setOrderItems(cartData);
+      setOrderItems(validatedCartData);
     };
 
     checkAuth();
@@ -169,11 +186,7 @@ export default function CheckoutPage() {
          window.dispatchEvent(new Event('cartUpdated'));
          
          toast.success('Order placed successfully!');
-         if (result.data && result.data._id) {
-           router.push(`/user/orderconfirmation/${result.data._id}`);
-         } else {
-           router.push('/user/orderconfirmation');
-         }
+         router.push('/user/orderhistory');
        } else {
          if (result.message && (result.message.includes('jwt') || result.message.includes('Unauthorized'))) {
            toast.error('Session expired. Please login again.');

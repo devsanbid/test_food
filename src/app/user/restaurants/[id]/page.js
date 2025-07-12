@@ -83,6 +83,7 @@ export default function RestaurantProfilePage() {
       name: item.name,
       price: item.price,
       imageUrl: item.image,
+      category: item.category,
       restaurantId: restaurant._id,
       restaurant: {
         _id: restaurant._id,

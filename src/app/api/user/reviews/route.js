@@ -95,7 +95,7 @@ export async function GET(request) {
 
     // Get review statistics
     const stats = await Review.aggregate([
-      { $match: { user: mongoose.Types.ObjectId(user.id) } },
+      { $match: { user: new mongoose.Types.ObjectId(user.id) } },
       {
         $group: {
           _id: null,
@@ -183,7 +183,7 @@ export async function GET(request) {
 
     // Get most reviewed restaurants
     const topRestaurants = await Review.aggregate([
-      { $match: { user: mongoose.Types.ObjectId(user.id) } },
+      { $match: { user: new mongoose.Types.ObjectId(user.id) } },
       { $group: { _id: '$restaurant', count: { $sum: 1 }, avgRating: { $avg: '$rating.overall' } } },
       { $sort: { count: -1 } },
       { $limit: 5 },

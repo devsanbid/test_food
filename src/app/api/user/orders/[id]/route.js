@@ -34,14 +34,26 @@ export async function GET(request, { params }) {
       _id: id,
       customer: user.id
     })
-    .populate('restaurant', 'name logo cuisine address phone email website operatingHours')
-    .populate('items.menuItem', 'name description images category allergens nutritionalInfo');
+    .populate('restaurant', 'name logo cuisine address phone email website operatingHours menu');
 
     if (!order) {
       return NextResponse.json(
         { success: false, message: 'Order not found' },
         { status: 404 }
       );
+    }
+
+    // Manually populate menu item details from restaurant's menu
+    if (order.restaurant && order.restaurant.menu) {
+      order.items = order.items.map(item => {
+        const menuItem = order.restaurant.menu.find(menuItem => 
+          menuItem._id.toString() === item.menuItem.toString()
+        );
+        return {
+          ...item.toObject(),
+          menuItem: menuItem || null
+        };
+      });
     }
 
     // Get order tracking history

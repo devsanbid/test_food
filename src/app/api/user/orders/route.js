@@ -90,7 +90,7 @@ export async function GET(request) {
 
     // Get order statistics
     const stats = await Order.aggregate([
-      { $match: { customer: mongoose.Types.ObjectId(user.id) } },
+      { $match: { customer: new mongoose.Types.ObjectId(user.id) } },
       {
         $group: {
           _id: null,
@@ -180,7 +180,7 @@ export async function GET(request) {
 
     // Get favorite restaurants
     const favoriteRestaurants = await Order.aggregate([
-      { $match: { customer: mongoose.Types.ObjectId(user.id) } },
+      { $match: { customer: new mongoose.Types.ObjectId(user.id) } },
       { $group: { _id: '$restaurant', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 3 },
@@ -346,6 +346,15 @@ export async function POST(request) {
       customizations: item.customizations
     }));
 
+    // Generate unique order number
+    const generateOrderNumber = () => {
+      const timestamp = Date.now().toString();
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      return `FS${timestamp.slice(-6)}${random}`;
+    };
+    
+    const orderNumber = generateOrderNumber();
+
     // Calculate estimated delivery/pickup time
     const now = new Date();
     const prepTime = Math.max(...cart.items.map(item => item.preparationTime || 15));
@@ -364,6 +373,7 @@ export async function POST(request) {
 
     // Create order
     const order = await Order.create({
+      orderNumber,
       customer: user.id,
       restaurant: cart.restaurant,
       items: orderItems,
@@ -423,7 +433,7 @@ export async function POST(request) {
       message: 'Order placed successfully',
       data: {
         order,
-        redirectUrl: `/user/orderconfirmation/${order._id}`
+        redirectUrl: `/user/orderhistory`
       }
     });
   } catch (error) {

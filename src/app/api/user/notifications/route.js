@@ -83,7 +83,7 @@ export async function GET(request) {
 
     // Get notification statistics
     const stats = await Notification.aggregate([
-      { $match: { user: mongoose.Types.ObjectId(user.id) } },
+      { $match: { user: new mongoose.Types.ObjectId(user.id) } },
       {
         $group: {
           _id: null,

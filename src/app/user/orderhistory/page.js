@@ -16,6 +16,92 @@ export default function OrderHistory() {
   const [sortBy, setSortBy] = useState('newest');
   const router = useRouter();
   
+  const handleReorder = async (order) => {
+    try {
+      const response = await fetch(`/api/user/orders/${order.id}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const orderData = result.data;
+        const cartItems = orderData.items.map(item => ({
+          id: item.menuItem,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          customizations: item.customizations || [],
+          restaurantId: orderData.restaurant._id,
+          restaurantName: orderData.restaurant.name
+        }));
+        
+        localStorage.setItem('cart', JSON.stringify(cartItems));
+        
+        window.dispatchEvent(new CustomEvent('cartUpdated'));
+        
+        router.push(`/user/restaurants/${orderData.restaurant._id}`);
+      } else {
+        console.error('Failed to fetch order details for reorder');
+      }
+    } catch (error) {
+      console.error('Error during reorder:', error);
+    }
+  };
+  
+  const handleViewDetails = (orderId) => {
+    router.push(`/user/orderconfirmation/${orderId}`);
+  };
+  
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/user/orders', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.orders) {
+        const formattedOrders = result.data.orders.map(order => ({
+          id: order.orderNumber || order._id,
+          restaurant: order.restaurant?.name || 'Unknown Restaurant',
+          restaurantImage: order.restaurant?.logo || '/img1.jpg',
+          items: order.items?.map(item => `${item.name} ${item.quantity > 1 ? `(${item.quantity})` : ''}`) || [],
+          date: order.createdAt,
+          total: order.pricing?.total || 0,
+          status: order.status,
+          deliveryAddress: order.deliveryAddress ? `${order.deliveryAddress.street}, ${order.deliveryAddress.city}, ${order.deliveryAddress.state} ${order.deliveryAddress.zipCode}` : 'N/A',
+          estimatedTime: order.orderType === 'delivery' ? 
+            (order.estimatedDeliveryTime ? `${Math.ceil((new Date(order.estimatedDeliveryTime) - new Date(order.createdAt)) / (1000 * 60))} mins` : '25-30 mins') :
+            (order.estimatedPickupTime ? `${Math.ceil((new Date(order.estimatedPickupTime) - new Date(order.createdAt)) / (1000 * 60))} mins` : '15-20 mins'),
+          rating: order.rating?.overall || null
+        }));
+        
+        setOrders(formattedOrders);
+        setFilteredOrders(formattedOrders);
+      } else {
+        console.error('Failed to fetch orders:', result.message);
+        setOrders([]);
+        setFilteredOrders([]);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      setOrders([]);
+      setFilteredOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -26,87 +112,10 @@ export default function OrderHistory() {
         }
         setUserData(user);
         
-        const sampleOrders = [
-          {
-            id: 'ORD-001',
-            restaurant: 'Pizza Palace',
-            restaurantImage: '/img1.jpg',
-            items: ['Margherita Pizza (Large)', 'Garlic Bread', 'Coca Cola'],
-            date: '2024-06-15T18:30:00',
-            total: 28.50,
-            status: 'delivered',
-            deliveryAddress: '123 Main Street, New York, NY',
-            estimatedTime: '25-30 mins',
-            rating: 4.5
-          },
-          {
-            id: 'ORD-002',
-            restaurant: 'Burger Barn',
-            restaurantImage: '/img1.jpg',
-            items: ['Classic Burger', 'French Fries', 'Milkshake'],
-            date: '2024-06-12T19:45:00',
-            total: 15.99,
-            status: 'delivered',
-            deliveryAddress: '123 Main Street, New York, NY',
-            estimatedTime: '20-25 mins',
-            rating: 4.2
-          },
-          {
-            id: 'ORD-003',
-            restaurant: 'Sushi Station',
-            restaurantImage: '/img1.jpg',
-            items: ['California Roll', 'Salmon Nigiri', 'Miso Soup'],
-            date: '2024-06-10T20:15:00',
-            total: 22.00,
-            status: 'delivered',
-            deliveryAddress: '123 Main Street, New York, NY',
-            estimatedTime: '30-35 mins',
-            rating: 4.8
-          },
-          {
-            id: 'ORD-004',
-            restaurant: 'Taco Town',
-            restaurantImage: '/img1.jpg',
-            items: ['Beef Tacos (3)', 'Guacamole', 'Churros'],
-            date: '2024-06-08T17:20:00',
-            total: 18.75,
-            status: 'cancelled',
-            deliveryAddress: '123 Main Street, New York, NY',
-            estimatedTime: '15-20 mins',
-            rating: null
-          },
-          {
-            id: 'ORD-005',
-            restaurant: 'Thai Garden',
-            restaurantImage: '/img1.jpg',
-            items: ['Pad Thai', 'Green Curry', 'Spring Rolls'],
-            date: '2024-06-05T19:00:00',
-            total: 32.40,
-            status: 'delivered',
-            deliveryAddress: '123 Main Street, New York, NY',
-            estimatedTime: '25-30 mins',
-            rating: 4.6
-          },
-          {
-            id: 'ORD-006',
-            restaurant: 'Indian Spice',
-            restaurantImage: '/img1.jpg',
-            items: ['Chicken Tikka Masala', 'Naan Bread', 'Basmati Rice'],
-            date: '2024-06-03T18:45:00',
-            total: 26.80,
-            status: 'delivered',
-            deliveryAddress: '123 Main Street, New York, NY',
-            estimatedTime: '30-35 mins',
-            rating: 4.4
-          }
-        ];
-        
-        setOrders(sampleOrders);
-        setFilteredOrders(sampleOrders);
+        await fetchOrders();
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/login');
-      } finally {
         setLoading(false);
       }
     };
@@ -338,10 +347,16 @@ export default function OrderHistory() {
                   </div>
                   
                   <div className="flex flex-col space-y-2 lg:ml-6">
-                    <button className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors font-medium">
+                    <button 
+                      onClick={() => handleReorder(order)}
+                      className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors font-medium"
+                    >
                       Reorder
                     </button>
-                    <button className="bg-gray-700 text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors font-medium">
+                    <button 
+                      onClick={() => handleViewDetails(order.id)}
+                      className="bg-gray-700 text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                    >
                       View Details
                     </button>
                   </div>

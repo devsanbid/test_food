@@ -207,7 +207,7 @@ reviewSchema.statics.getRestaurantAverageRating = async function(restaurantId) {
   const result = await this.aggregate([
     {
       $match: {
-        restaurant: mongoose.Types.ObjectId(restaurantId),
+        restaurant: new mongoose.Types.ObjectId(restaurantId),
         isHidden: false,
         moderationStatus: 'approved'
       }

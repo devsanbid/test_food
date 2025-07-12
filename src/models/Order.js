@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const orderItemSchema = new mongoose.Schema({
   menuItem: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Restaurant.menu',
     required: [true, 'Menu item is required']
   },
   name: {

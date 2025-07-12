@@ -9,7 +9,9 @@ const CART_STORAGE_KEY = 'foodSewaCart';
 export const getCartFromStorage = () => {
   try {
     const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+    console.log('Getting cart from storage:', savedCart);
     const parsedCart = savedCart ? JSON.parse(savedCart) : [];
+    console.log('Parsed cart:', parsedCart);
     return parsedCart;
   } catch (error) {
     console.error('Error parsing cart from localStorage:', error);
@@ -25,7 +27,9 @@ export const getCartFromStorage = () => {
  */
 export const saveCartToStorage = (cartItems) => {
   try {
+    console.log('Saving cart to storage:', cartItems);
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+    console.log('Cart saved successfully');
     return true;
   } catch (error) {
     console.error('Error saving cart to localStorage:', error);

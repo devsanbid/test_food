@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .container {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #f97316;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #ea580c;
+        }
+        pre {
+            background-color: #1a1a1a;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: #ef4444;
+        }
+        .success {
+            color: #10b981;
+        }
+        input {
+            background-color: #1a1a1a;
+            color: white;
+            border: 1px solid #4a4a4a;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>FoodSewa Cart Debug Tool</h1>
+    
+    <div class="container">
+        <h2>Current Cart Status</h2>
+        <button onclick="checkCart()">Check Cart Data</button>
+        <button onclick="clearCartData()">Clear Cart</button>
+        <button onclick="addTestItem()">Add Test Item</button>
+        <div id="cartStatus"></div>
+    </div>
+    
+    <div class="container">
+        <h2>LocalStorage Inspector</h2>
+        <button onclick="showAllLocalStorage()">Show All LocalStorage</button>
+        <button onclick="clearAllLocalStorage()">Clear All LocalStorage</button>
+        <div id="localStorageData"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Manual Cart Data Entry</h2>
+        <textarea id="cartInput" rows="10" cols="80" placeholder="Enter cart JSON data here..."></textarea><br>
+        <button onclick="setCartData()">Set Cart Data</button>
+    </div>
+
+    <script>
+        const CART_STORAGE_KEY = 'foodSewaCart';
+        
+        function checkCart() {
+            try {
+                const cartData = localStorage.getItem(CART_STORAGE_KEY);
+                const statusDiv = document.getElementById('cartStatus');
+                
+                if (!cartData) {
+                    statusDiv.innerHTML = '<div class="error">No cart data found in localStorage</div>';
+                    return;
+                }
+                
+                const parsedCart = JSON.parse(cartData);
+                statusDiv.innerHTML = `
+                    <div class="success">Cart found with ${parsedCart.length} items:</div>
+                    <pre>${JSON.stringify(parsedCart, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('cartStatus').innerHTML = `
+                    <div class="error">Error reading cart: ${error.message}</div>
+                `;
+            }
+        }
+        
+        function clearCartData() {
+            localStorage.removeItem(CART_STORAGE_KEY);
+            document.getElementById('cartStatus').innerHTML = '<div class="success">Cart cleared</div>';
+        }
+        
+        function addTestItem() {
+            const testItem = {
+                _id: 'test-item-' + Date.now(),
+                name: 'Test Pizza',
+                price: 12.99,
+                quantity: 1,
+                category: 'main',
+                imageUrl: '/images/default-food.jpg',
+                restaurantId: 'test-restaurant',
+                restaurant: {
+                    _id: 'test-restaurant',
+                    name: 'Test Restaurant'
+                }
+            };
+            
+            try {
+                const currentCart = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
+                currentCart.push(testItem);
+                localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(currentCart));
+                document.getElementById('cartStatus').innerHTML = '<div class="success">Test item added to cart</div>';
+                checkCart();
+            } catch (error) {
+                document.getElementById('cartStatus').innerHTML = `
+                    <div class="error">Error adding test item: ${error.message}</div>
+                `;
+            }
+        }
+        
+        function showAllLocalStorage() {
+            const data = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                data[key] = localStorage.getItem(key);
+            }
+            
+            document.getElementById('localStorageData').innerHTML = `
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+        }
+        
+        function clearAllLocalStorage() {
+            localStorage.clear();
+            document.getElementById('localStorageData').innerHTML = '<div class="success">All localStorage cleared</div>';
+        }
+        
+        function setCartData() {
+            const input = document.getElementById('cartInput').value;
+            try {
+                const cartData = JSON.parse(input);
+                localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartData));
+                document.getElementById('cartStatus').innerHTML = '<div class="success">Cart data set successfully</div>';
+                checkCart();
+            } catch (error) {
+                document.getElementById('cartStatus').innerHTML = `
+                    <div class="error">Error setting cart data: ${error.message}</div>
+                `;
+            }
+        }
+        
+        // Auto-check cart on page load
+        window.onload = function() {
+            checkCart();
+        };
+    </script>
+</body>
+</html>
