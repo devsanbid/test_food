@@ -315,12 +315,12 @@ export default function UserHeader() {
             <div className="max-h-96 overflow-y-auto">
               {cartItems.length > 0 ? (
                 <>
-                  {cartItems.map((item) => (
-                    <div key={item.id} className="p-4 border-b border-gray-700">
+                  {cartItems.map((item, index) => (
+                    <div key={`${item.menuItem || item.name}-${index}`} className="p-4 border-b border-gray-700">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <h4 className="font-medium text-white">{item.name}</h4>
-                          <p className="text-sm text-gray-400">{item.restaurant}</p>
+                          <p className="text-sm text-gray-400">{item.restaurant?.name || item.restaurantName || item.restaurant}</p>
                           <p className="text-sm text-orange-400 font-medium">${item.price}</p>
                         </div>
                         <div className="flex items-center space-x-2">
