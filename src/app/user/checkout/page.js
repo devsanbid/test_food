@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, MapPin, CreditCard, Clock, User, Phone, Mail, Home, Building, CheckCircle } from 'lucide-react';
-import { getCurrentUser } from '@/actions/authActions';
+import { getCurrentUserClient } from '@/utils/authUtils';
 import { getCartFromStorage, clearCart, getCartTotal, getCartItemsCount } from '@/utils/cartUtils';
 import { toast } from 'react-hot-toast';
 
@@ -22,7 +22,7 @@ export default function CheckoutPage() {
     instructions: ''
   });
 
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [cardDetails, setCardDetails] = useState({
     cardNumber: '',
     expiryDate: '',
@@ -43,9 +43,11 @@ export default function CheckoutPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const userData = await getCurrentUser();
+        const userData = await getCurrentUserClient();
+        console.log('getCurrentUser result:', userData);
         if (!userData || userData.role !== 'user') {
-          router.push('/login');
+          console.log('Auth failed: no user data or wrong role');
+          router.push('/auth/login');
           return;
         }
         setUser(userData);
@@ -56,19 +58,44 @@ export default function CheckoutPage() {
         }));
       } catch (error) {
         console.error('Auth check failed:', error);
-        router.push('/login');
+        router.push('/auth/login');
       } finally {
         setLoading(false);
       }
     };
 
-    const loadCartData = () => {
+    const loadCartData = async () => {
       const cartData = getCartFromStorage();
+      
       if (!cartData || cartData.length === 0) {
         toast.error('Your cart is empty');
         router.push('/user/cart');
         return;
       }
+      
+      try {
+        const response = await fetch('/api/user/cart', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'sync-cart',
+            items: cartData
+          })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          console.log('Cart synced to database successfully');
+        } else {
+          console.error('Failed to sync cart:', result.message);
+        }
+      } catch (error) {
+        console.error('Cart sync error:', error);
+      }
+      
       setOrderItems(cartData);
     };
 
@@ -110,14 +137,6 @@ export default function CheckoutPage() {
     }
     
     try {
-       const token = localStorage.getItem('token');
-       
-       if (!token) {
-         toast.error('Please login to place an order');
-         router.push('/auth/login');
-         return;
-       }
-       
        const orderData = {
          orderType: 'delivery',
          deliveryAddress: {
@@ -135,9 +154,9 @@ export default function CheckoutPage() {
        const response = await fetch('/api/user/orders', {
          method: 'POST',
          headers: {
-           'Content-Type': 'application/json',
-           'Authorization': `Bearer ${token}`
+           'Content-Type': 'application/json'
          },
+         credentials: 'include', // Important: include cookies in the request
          body: JSON.stringify(orderData)
        });
 
@@ -156,9 +175,8 @@ export default function CheckoutPage() {
            router.push('/user/orderconfirmation');
          }
        } else {
-         if (result.message && result.message.includes('jwt')) {
+         if (result.message && (result.message.includes('jwt') || result.message.includes('Unauthorized'))) {
            toast.error('Session expired. Please login again.');
-           localStorage.removeItem('token');
            router.push('/auth/login');
          } else {
            toast.error(result.message || 'Failed to place order');
@@ -166,9 +184,8 @@ export default function CheckoutPage() {
        }
      } catch (error) {
        console.error('Order placement error:', error);
-       if (error.message && error.message.includes('jwt')) {
+       if (error.message && (error.message.includes('jwt') || error.message.includes('Unauthorized'))) {
          toast.error('Session expired. Please login again.');
-         localStorage.removeItem('token');
          router.push('/auth/login');
        } else {
          toast.error('Failed to place order. Please try again.');
@@ -354,34 +371,14 @@ export default function CheckoutPage() {
 
                 <div className="mb-6">
                   <h3 className="text-lg font-medium mb-3">Payment Method</h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    <button 
-                      onClick={() => setPaymentMethod('card')}
-                      className={`p-4 border rounded-lg transition-colors ${
-                        paymentMethod === 'card' ? 'border-orange-500 bg-orange-500/10' : 'border-gray-600'
-                      }`}
-                    >
-                      <CreditCard className="w-6 h-6 mx-auto mb-2" />
-                      <span className="text-sm">Card</span>
-                    </button>
-                    <button 
-                      onClick={() => setPaymentMethod('cash')}
-                      className={`p-4 border rounded-lg transition-colors ${
-                        paymentMethod === 'cash' ? 'border-orange-500 bg-orange-500/10' : 'border-gray-600'
-                      }`}
-                    >
-                      <span className="text-2xl mb-2 block">💵</span>
-                      <span className="text-sm">Cash</span>
-                    </button>
-                    <button 
-                      onClick={() => setPaymentMethod('digital')}
-                      className={`p-4 border rounded-lg transition-colors ${
-                        paymentMethod === 'digital' ? 'border-orange-500 bg-orange-500/10' : 'border-gray-600'
-                      }`}
-                    >
-                      <span className="text-2xl mb-2 block">📱</span>
-                      <span className="text-sm">Digital</span>
-                    </button>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="p-4 border border-orange-500 bg-orange-500/10 rounded-lg">
+                      <div className="flex items-center justify-center">
+                        <span className="text-2xl mb-2 block">💵</span>
+                        <span className="text-lg font-medium ml-2">Cash on Delivery</span>
+                      </div>
+                      <p className="text-sm text-gray-400 text-center mt-2">Pay with cash when your order arrives</p>
+                    </div>
                   </div>
                 </div>
 
@@ -441,7 +438,7 @@ export default function CheckoutPage() {
                     onClick={handlePlaceOrder}
                     className="flex-1 bg-orange-500 hover:bg-orange-600 py-3 rounded-lg font-semibold transition-colors"
                   >
-                    Place Order
+                    Place Order (Cash on Delivery)
                   </button>
                 </div>
               </div>

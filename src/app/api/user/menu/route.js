@@ -119,7 +119,7 @@ export async function GET(request) {
           name: '$menu.name',
           description: '$menu.description',
           price: '$menu.price',
-          image: '$menu.image',
+          image: '$menu.imageUrl',
           category: '$menu.category',
           tags: '$menu.tags',
           preparationTime: '$menu.preparationTime',

@@ -1,10 +1,29 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Heart, Star } from 'lucide-react';
+import { addDishToFavorites, removeDishFromFavorites, getUserFavoriteDishes } from '@/actions/favoritesActions';
+import { toast } from 'react-hot-toast';
 
 export default function ProductCard({ dish, onAddToCart }) {
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+
+  useEffect(() => {
+    checkIfFavorite();
+  }, [dish._id]);
+
+  const checkIfFavorite = async () => {
+    try {
+      const favoritesData = await getUserFavoriteDishes();
+      const isFavorite = favoritesData.dishes.some(
+        favDish => favDish.menuItemId === dish._id
+      );
+      setIsLiked(isFavorite);
+    } catch (error) {
+      console.error('Error checking favorite status:', error);
+    }
+  };
 
   // Helper function to safely render values that might be objects
   const safeRender = (value) => {
@@ -24,8 +43,33 @@ export default function ProductCard({ dish, onAddToCart }) {
     setIsAdding(false);
   };
 
-  const toggleLike = () => {
-    setIsLiked(!isLiked);
+  const toggleLike = async (e) => {
+    e.stopPropagation();
+    setIsTogglingFavorite(true);
+    
+    try {
+      if (isLiked) {
+        await removeDishFromFavorites(dish.restaurant._id, dish._id);
+        setIsLiked(false);
+        toast.success('Removed from favorites');
+      } else {
+        const dishData = {
+          restaurantId: dish.restaurant._id,
+          menuItemId: dish._id,
+          name: dish.name,
+          price: dish.price,
+          image: dish.image
+        };
+        await addDishToFavorites(dishData);
+        setIsLiked(true);
+        toast.success('Added to favorites');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast.error('Failed to update favorites');
+    } finally {
+      setIsTogglingFavorite(false);
+    }
   };
 
   return (
@@ -36,12 +80,12 @@ export default function ProductCard({ dish, onAddToCart }) {
         <div className="relative mb-4">
           <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-700 transition-transform duration-500 group-hover:scale-110">
             <img 
-              src={dish.imageUrl || dish.image || dish.img || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzNzQxNTEiLz4KICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSI4MCIgcj0iMjUiIGZpbGw9IiM2QjcyODAiLz4KICA8cGF0aCBkPSJNNzUgMTIwIFExMDAgMTAwIDEyNSAxMjAgTDEyNSAxNDAgUTEwMCAxNjAgNzUgMTQwIFoiIGZpbGw9IiM2QjcyODAiLz4KICA8Y2lyY2xlIGN4PSI4NSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjEwMCIgY3k9IjEzNSIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjExNSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDx0ZXh0IHg9IjEwMCIgeT0iMTgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K'} 
+              src={dish.imageUrl || dish.image || dish.img || '/images/default-food.svg'} 
               alt={dish.name} 
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-125"
               onError={(e) => {
-                if (e.target.src !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzNzQxNTEiLz4KICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSI4MCIgcj0iMjUiIGZpbGw9IiM2QjcyODAiLz4KICA8cGF0aCBkPSJNNzUgMTIwIFExMDAgMTAwIDEyNSAxMjAgTDEyNSAxNDAgUTEwMCAxNjAgNzUgMTQwIFoiIGZpbGw9IiM2QjcyODAiLz4KICA8Y2lyY2xlIGN4PSI4NSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjEwMCIgY3k9IjEzNSIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjExNSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDx0ZXh0IHg9IjEwMCIgeT0iMTgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K') {
-                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzNzQxNTEiLz4KICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSI4MCIgcj0iMjUiIGZpbGw9IiM2QjcyODAiLz4KICA8cGF0aCBkPSJNNzUgMTIwIFExMDAgMTAwIDEyNSAxMjAgTDEyNSAxNDAgUTEwMCAxNjAgNzUgMTQwIFoiIGZpbGw9IiM2QjcyODAiLz4KICA8Y2lyY2xlIGN4PSI4NSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjEwMCIgY3k9IjEzNSIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDxjaXJjbGUgY3g9IjExNSIgY3k9IjEzMCIgcj0iMyIgZmlsbD0iIzlDQTNBRiIvPgogIDx0ZXh0IHg9IjEwMCIgeT0iMTgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K';
+                if (e.target.src !== '/images/default-food.svg') {
+                  e.target.src = '/images/default-food.svg';
                 }
               }}
             />
@@ -49,15 +93,20 @@ export default function ProductCard({ dish, onAddToCart }) {
           
           <button
             onClick={toggleLike}
+            disabled={isTogglingFavorite}
             className={`absolute top-2 right-2 p-2 rounded-full transition-all duration-300 ${
               isLiked 
                 ? 'bg-red-500 text-white scale-110' 
                 : 'bg-gray-700/80 text-gray-300 hover:bg-red-500 hover:text-white'
-            }`}
+            } ${isTogglingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <Heart className={`w-4 h-4 transition-transform duration-300 ${
-              isLiked ? 'fill-current scale-110' : ''
-            }`} />
+            {isTogglingFavorite ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Heart className={`w-4 h-4 transition-transform duration-300 ${
+                isLiked ? 'fill-current scale-110' : ''
+              }`} />
+            )}
           </button>
           
           <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">

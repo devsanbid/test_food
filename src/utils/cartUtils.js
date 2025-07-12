@@ -9,7 +9,8 @@ const CART_STORAGE_KEY = 'foodSewaCart';
 export const getCartFromStorage = () => {
   try {
     const savedCart = localStorage.getItem(CART_STORAGE_KEY);
-    return savedCart ? JSON.parse(savedCart) : [];
+    const parsedCart = savedCart ? JSON.parse(savedCart) : [];
+    return parsedCart;
   } catch (error) {
     console.error('Error parsing cart from localStorage:', error);
     localStorage.removeItem(CART_STORAGE_KEY);
@@ -49,7 +50,14 @@ export const addToCart = (dish, currentCart = []) => {
     );
   }
   
-  return [...currentCart, { ...dish, quantity: 1 }];
+  // Extract restaurantId from dish.restaurant._id for compatibility with sync-cart API
+  const dishWithRestaurantId = {
+    ...dish,
+    restaurantId: dish.restaurant?._id || dish.restaurantId,
+    quantity: 1
+  };
+  
+  return [...currentCart, dishWithRestaurantId];
 };
 
 /**

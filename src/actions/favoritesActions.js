@@ -1,8 +1,25 @@
-'use server';
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-export async function getUserFavorites(params = {}) {
+const getAuthHeaders = () => {
+  if (typeof window !== 'undefined') {
+    const token = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('token='))
+      ?.split('=')[1];
+    
+    return token ? {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    } : {
+      'Content-Type': 'application/json'
+    };
+  }
+  return {
+    'Content-Type': 'application/json'
+  };
+};
+
+export async function getFavorites(params = {}) {
   try {
     const queryParams = new URLSearchParams();
     
@@ -12,13 +29,11 @@ export async function getUserFavorites(params = {}) {
       }
     });
 
-    const url = `${API_BASE_URL}/api/user/favorites${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const url = `${API_BASE_URL}/api/favorites${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include',
     });
 
@@ -29,7 +44,7 @@ export async function getUserFavorites(params = {}) {
 
     const data = await response.json();
     return {
-      restaurants: data.data.restaurants || [],
+      favorites: data.data.favorites || [],
       pagination: data.data.pagination || {},
       stats: data.data.stats || {}
     };
@@ -39,15 +54,53 @@ export async function getUserFavorites(params = {}) {
   }
 }
 
+export async function getUserFavorites(params = {}) {
+  try {
+    const favoritesData = await getFavorites({ ...params, type: 'restaurant' });
+    return {
+      restaurants: favoritesData.favorites.map(fav => fav.restaurant).filter(Boolean),
+      pagination: favoritesData.pagination,
+      stats: favoritesData.stats
+    };
+  } catch (error) {
+    console.error('Get user favorites error:', error);
+    throw error;
+  }
+}
+
+export async function getUserFavoriteDishes(params = {}) {
+  try {
+    const favoritesData = await getFavorites({ ...params, type: 'dish' });
+    return {
+      dishes: favoritesData.favorites.map(fav => ({
+        _id: fav.dish._id,
+        restaurantId: fav.restaurant._id,
+        menuItemId: fav.dish._id,
+        name: fav.dish.name,
+        price: fav.dish.price,
+        image: fav.dish.image,
+        addedAt: fav.addedAt,
+        restaurant: fav.restaurant
+      })).filter(dish => dish.name),
+      pagination: favoritesData.pagination,
+      stats: favoritesData.stats
+    };
+  } catch (error) {
+    console.error('Get favorite dishes error:', error);
+    throw error;
+  }
+}
+
 export async function addToFavorites(restaurantId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/user/favorites`, {
+    const response = await fetch(`${API_BASE_URL}/api/favorites`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include',
-      body: JSON.stringify({ restaurantId })
+      body: JSON.stringify({ 
+        restaurantId,
+        type: 'restaurant'
+      })
     });
 
     if (!response.ok) {
@@ -65,11 +118,9 @@ export async function addToFavorites(restaurantId) {
 
 export async function removeFromFavorites(restaurantId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/user/favorites?restaurantId=${restaurantId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/favorites?restaurantId=${restaurantId}&type=restaurant`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include'
     });
 
@@ -86,38 +137,25 @@ export async function removeFromFavorites(restaurantId) {
   }
 }
 
-export async function clearAllFavorites() {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/user/favorites?removeAll=true`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Failed to clear favorites' }));
-      throw new Error(errorData.message || 'Failed to clear favorites');
-    }
-
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error('Clear favorites error:', error);
-    throw error;
-  }
-}
-
 export async function addDishToFavorites(dishData) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/user/favorites/dishes`, {
+    const { restaurantId, menuItemId, name, price, image, category } = dishData;
+    
+    const response = await fetch(`${API_BASE_URL}/api/favorites`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include',
-      body: JSON.stringify(dishData)
+      body: JSON.stringify({
+        restaurantId,
+        menuItemId,
+        type: 'dish',
+        dishDetails: {
+          name,
+          price,
+          image,
+          category
+        }
+      })
     });
 
     if (!response.ok) {
@@ -135,11 +173,9 @@ export async function addDishToFavorites(dishData) {
 
 export async function removeDishFromFavorites(restaurantId, menuItemId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/user/favorites/dishes?restaurantId=${restaurantId}&menuItemId=${menuItemId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/favorites?restaurantId=${restaurantId}&menuItemId=${menuItemId}&type=dish`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include'
     });
 
@@ -156,39 +192,23 @@ export async function removeDishFromFavorites(restaurantId, menuItemId) {
   }
 }
 
-export async function getUserFavoriteDishes(params = {}) {
+export async function clearAllFavorites() {
   try {
-    const queryParams = new URLSearchParams();
-    
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        queryParams.append(key, value.toString());
-      }
-    });
-
-    const url = `${API_BASE_URL}/api/user/favorites/dishes${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
+    const response = await fetch(`${API_BASE_URL}/api/favorites?removeAll=true`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      credentials: 'include'
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Failed to fetch favorite dishes' }));
-      throw new Error(errorData.message || 'Failed to fetch favorite dishes');
+      const errorData = await response.json().catch(() => ({ message: 'Failed to clear favorites' }));
+      throw new Error(errorData.message || 'Failed to clear favorites');
     }
 
     const data = await response.json();
-    return {
-      dishes: data.data.dishes || [],
-      pagination: data.data.pagination || {},
-      stats: data.data.stats || {}
-    };
+    return data.data;
   } catch (error) {
-    console.error('Get favorite dishes error:', error);
+    console.error('Clear favorites error:', error);
     throw error;
   }
 }

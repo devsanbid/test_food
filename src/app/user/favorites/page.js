@@ -6,6 +6,7 @@ import { Heart, Star, Clock, MapPin, Plus, Trash2, ShoppingCart, Filter, Search 
 import { getCurrentUser } from '@/actions/authActions';
 import { toast } from 'react-hot-toast';
 import { getCartFromStorage, saveCartToStorage, addToCart } from '@/utils/cartUtils';
+import { getUserFavorites, getUserFavoriteDishes, removeFromFavorites, removeDishFromFavorites } from '@/actions/favoritesActions';
 
 export default function FavoritesPage() {
   const [user, setUser] = useState(null);
@@ -15,80 +16,27 @@ export default function FavoritesPage() {
   const [filterCategory, setFilterCategory] = useState('all');
   const router = useRouter();
 
-  const [favoriteDishes, setFavoriteDishes] = useState([
-    {
-      id: 1,
-      name: "Spicy seasoned seafood noodles",
-      price: 2.29,
-      image: "/seasoned.png",
-      restaurant: "Ocean Delights",
-      rating: 4.8,
-      category: "seafood",
-      prepTime: "15-20 min",
-      description: "Fresh seafood with perfectly seasoned noodles"
-    },
-    {
-      id: 2,
-      name: "Beef dumpling in hot and sour soup",
-      price: 2.99,
-      image: "/Image3.png",
-      restaurant: "Asian Fusion",
-      rating: 4.6,
-      category: "soup",
-      prepTime: "20-25 min",
-      description: "Tender beef dumplings in authentic hot and sour broth"
-    },
-    {
-      id: 3,
-      name: "Healthy noodle with spinach leaf",
-      price: 3.29,
-      image: "/Image5.png",
-      restaurant: "Green Garden",
-      rating: 4.5,
-      category: "vegetarian",
-      prepTime: "12-18 min",
-      description: "Nutritious noodles packed with fresh spinach"
-    }
-  ]);
+  const [favoriteDishes, setFavoriteDishes] = useState([]);
+  const [favoriteRestaurants, setFavoriteRestaurants] = useState([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(true);
 
-  const [favoriteRestaurants, setFavoriteRestaurants] = useState([
-    {
-      id: 1,
-      name: "Ocean Delights",
-      image: "/seasoned.png",
-      rating: 4.8,
-      cuisine: "Seafood",
-      deliveryTime: "25-35 min",
-      deliveryFee: 2.50,
-      distance: "1.2 km",
-      isOpen: true,
-      specialties: ["Fresh Seafood", "Asian Fusion", "Noodles"]
-    },
-    {
-      id: 2,
-      name: "Italian Corner",
-      image: "/Image2.png",
-      rating: 4.7,
-      cuisine: "Italian",
-      deliveryTime: "30-40 min",
-      deliveryFee: 3.00,
-      distance: "2.1 km",
-      isOpen: true,
-      specialties: ["Pasta", "Pizza", "Risotto"]
-    },
-    {
-      id: 3,
-      name: "Green Garden",
-      image: "/Image5.png",
-      rating: 4.5,
-      cuisine: "Vegetarian",
-      deliveryTime: "20-30 min",
-      deliveryFee: 2.00,
-      distance: "0.8 km",
-      isOpen: false,
-      specialties: ["Healthy Bowls", "Salads", "Smoothies"]
+  const fetchFavorites = async () => {
+    try {
+      setLoadingFavorites(true);
+      const [dishesData, restaurantsData] = await Promise.all([
+        getUserFavoriteDishes({ page: 1, limit: 50 }),
+        getUserFavorites({ page: 1, limit: 50 })
+      ]);
+      
+      setFavoriteDishes(dishesData.dishes || []);
+      setFavoriteRestaurants(restaurantsData.restaurants || []);
+    } catch (error) {
+      console.error('Failed to fetch favorites:', error);
+      toast.error('Failed to load favorites');
+    } finally {
+      setLoadingFavorites(false);
     }
-  ]);
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -99,6 +47,7 @@ export default function FavoritesPage() {
           return;
         }
         setUser(userData);
+        await fetchFavorites();
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/login');
@@ -109,12 +58,26 @@ export default function FavoritesPage() {
     checkAuth();
   }, [router]);
 
-  const removeFavoriteDish = (dishId) => {
-    setFavoriteDishes(dishes => dishes.filter(dish => dish.id !== dishId));
+  const removeFavoriteDish = async (dishId) => {
+    try {
+      await removeDishFromFavorites(dishId);
+      setFavoriteDishes(prev => prev.filter(dish => dish._id !== dishId));
+      toast.success('Dish removed from favorites');
+    } catch (error) {
+      console.error('Failed to remove dish from favorites:', error);
+      toast.error('Failed to remove dish from favorites');
+    }
   };
 
-  const removeFavoriteRestaurant = (restaurantId) => {
-    setFavoriteRestaurants(restaurants => restaurants.filter(restaurant => restaurant.id !== restaurantId));
+  const removeFavoriteRestaurant = async (restaurantId) => {
+    try {
+      await removeFromFavorites(restaurantId);
+      setFavoriteRestaurants(prev => prev.filter(restaurant => restaurant._id !== restaurantId));
+      toast.success('Restaurant removed from favorites');
+    } catch (error) {
+      console.error('Failed to remove restaurant from favorites:', error);
+      toast.error('Failed to remove restaurant from favorites');
+    }
   };
 
   const addToCartHandler = (dish) => {
@@ -145,7 +108,7 @@ export default function FavoritesPage() {
     restaurant.cuisine.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
+  if (loading || loadingFavorites) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
@@ -234,8 +197,8 @@ export default function FavoritesPage() {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredDishes.map((dish) => (
-                  <div key={dish.id} className="bg-gray-800 rounded-lg overflow-hidden hover:transform hover:scale-105 transition-all duration-300">
+                   {filteredDishes.map((dish) => (
+                  <div key={dish._id} className="bg-gray-800 rounded-lg overflow-hidden hover:transform hover:scale-105 transition-all duration-300">
                     <div className="relative">
                       <img 
                         src={dish.image} 
@@ -243,7 +206,7 @@ export default function FavoritesPage() {
                         className="w-full h-48 object-cover"
                       />
                       <button 
-                        onClick={() => removeFavoriteDish(dish.id)}
+                        onClick={() => removeFavoriteDish(dish._id)}
                         className="absolute top-3 right-3 p-2 bg-red-500 hover:bg-red-600 rounded-full transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -264,9 +227,9 @@ export default function FavoritesPage() {
                       </div>
                       <div className="flex items-center text-sm text-gray-400 mb-3">
                         <MapPin className="w-4 h-4 mr-1" />
-                        <span className="mr-3">{dish.restaurant}</span>
+                        <span className="mr-3">{dish.restaurant?.name || 'Unknown Restaurant'}</span>
                         <Clock className="w-4 h-4 mr-1" />
-                        <span>{dish.prepTime}</span>
+                        <span>{dish.prepTime || 'N/A'}</span>
                       </div>
                       <button 
                         onClick={() => addToCartHandler(dish)}
@@ -277,10 +240,10 @@ export default function FavoritesPage() {
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                   ))}
+                 </div>
+               )}
+           </div>
         )}
 
         {activeTab === 'restaurants' && (
@@ -299,8 +262,8 @@ export default function FavoritesPage() {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-6">
-                {filteredRestaurants.map((restaurant) => (
-                  <div key={restaurant.id} className="bg-gray-800 rounded-lg overflow-hidden hover:transform hover:scale-105 transition-all duration-300">
+                   {filteredRestaurants.map((restaurant) => (
+                  <div key={restaurant._id} className="bg-gray-800 rounded-lg overflow-hidden hover:transform hover:scale-105 transition-all duration-300">
                     <div className="relative">
                       <img 
                         src={restaurant.image} 
@@ -308,7 +271,7 @@ export default function FavoritesPage() {
                         className="w-full h-32 object-cover"
                       />
                       <button 
-                        onClick={() => removeFavoriteRestaurant(restaurant.id)}
+                        onClick={() => removeFavoriteRestaurant(restaurant._id)}
                         className="absolute top-3 right-3 p-2 bg-red-500 hover:bg-red-600 rounded-full transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -327,7 +290,7 @@ export default function FavoritesPage() {
                           <span className="text-sm">{restaurant.rating?.average?.toFixed(1) || 'N/A'}</span>
                         </div>
                       </div>
-                      <p className="text-gray-400 text-sm mb-3">{restaurant.cuisine} • {restaurant.distance}</p>
+                      <p className="text-gray-400 text-sm mb-3">{restaurant.cuisine} • {restaurant.address?.city || 'Location'}</p>
                       <div className="flex items-center text-sm text-gray-400 mb-3">
                         <Clock className="w-4 h-4 mr-1" />
                         <span className="mr-3">
@@ -336,10 +299,10 @@ export default function FavoritesPage() {
                             'N/A'
                           }
                         </span>
-                        <span>Delivery: ${restaurant.deliveryFee.toFixed(2)}</span>
+                        <span>Delivery: ${(restaurant.deliveryFee || 0).toFixed(2)}</span>
                       </div>
                       <div className="flex flex-wrap gap-1 mb-4">
-                        {restaurant.specialties.map((specialty, index) => (
+                        {(restaurant.specialties || []).map((specialty, index) => (
                           <span key={index} className="bg-gray-700 px-2 py-1 rounded text-xs">
                             {specialty}
                           </span>

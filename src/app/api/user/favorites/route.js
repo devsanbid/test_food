@@ -36,7 +36,7 @@ export async function GET(request) {
     // Get user with favorites
     const userWithFavorites = await User.findById(user.id).select('favorites');
     
-    if (!userWithFavorites || !userWithFavorites.favorites.length) {
+    if (!userWithFavorites || !userWithFavorites.favorites || !userWithFavorites.favorites.length) {
       return NextResponse.json({
         success: true,
         data: {
@@ -275,7 +275,7 @@ export async function POST(request) {
 
     // Get user and check if restaurant is already in favorites
     const userDoc = await User.findById(user.id);
-    const isAlreadyFavorite = userDoc.favorites.includes(restaurantId);
+    const isAlreadyFavorite = userDoc.favorites && userDoc.favorites.includes(restaurantId);
 
     if (isAlreadyFavorite) {
       return NextResponse.json(
@@ -285,6 +285,9 @@ export async function POST(request) {
     }
 
     // Add to favorites
+    if (!userDoc.favorites) {
+      userDoc.favorites = [];
+    }
     userDoc.favorites.push(restaurantId);
     await userDoc.save();
 
@@ -331,7 +334,7 @@ export async function DELETE(request) {
     if (removeAll) {
       // Remove all favorites
       const userDoc = await User.findById(user.id);
-      const removedCount = userDoc.favorites.length;
+      const removedCount = userDoc.favorites ? userDoc.favorites.length : 0;
       userDoc.favorites = [];
       await userDoc.save();
 
@@ -352,6 +355,13 @@ export async function DELETE(request) {
 
     // Get user and check if restaurant is in favorites
     const userDoc = await User.findById(user.id);
+    if (!userDoc.favorites) {
+      return NextResponse.json(
+        { success: false, message: 'Restaurant is not in favorites' },
+        { status: 400 }
+      );
+    }
+    
     const favoriteIndex = userDoc.favorites.indexOf(restaurantId);
 
     if (favoriteIndex === -1) {
@@ -370,7 +380,7 @@ export async function DELETE(request) {
       message: 'Restaurant removed from favorites',
       data: {
         restaurantId,
-        totalFavorites: userDoc.favorites.length
+        totalFavorites: userDoc.favorites ? userDoc.favorites.length : 0
       }
     });
   } catch (error) {

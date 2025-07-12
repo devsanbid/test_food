@@ -25,9 +25,9 @@ export async function GET(request) {
     const sortBy = searchParams.get('sortBy') || 'addedAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    const userDoc = await User.findById(user.id).select('favorites');
+    const userDoc = await User.findById(user.id).select('favoriteDishes');
     
-    if (!userDoc || !userDoc.favorites || !userDoc.favorites.dishes || !userDoc.favorites.dishes.length) {
+    if (!userDoc || !userDoc.favoriteDishes || !userDoc.favoriteDishes.length) {
       return NextResponse.json({
         success: true,
         data: {
@@ -48,7 +48,7 @@ export async function GET(request) {
       });
     }
 
-    let favoriteDishes = [...userDoc.favorites.dishes];
+    let favoriteDishes = [...userDoc.favoriteDishes];
 
     if (search) {
       favoriteDishes = favoriteDishes.filter(dish => 
@@ -207,14 +207,11 @@ export async function POST(request) {
 
     const userDoc = await User.findById(user.id);
     
-    if (!userDoc.favorites) {
-      userDoc.favorites = { restaurants: [], dishes: [] };
-    }
-    if (!userDoc.favorites.dishes) {
-      userDoc.favorites.dishes = [];
+    if (!userDoc.favoriteDishes) {
+      userDoc.favoriteDishes = [];
     }
 
-    const existingDish = userDoc.favorites.dishes.find(
+    const existingDish = userDoc.favoriteDishes.find(
       dish => dish.restaurantId.toString() === restaurantId && dish.menuItemId.toString() === menuItemId
     );
 
@@ -225,7 +222,7 @@ export async function POST(request) {
       );
     }
 
-    userDoc.favorites.dishes.push({
+    userDoc.favoriteDishes.push({
       restaurantId,
       menuItemId,
       name,
@@ -247,7 +244,7 @@ export async function POST(request) {
           price,
           image: image || ''
         },
-        totalFavorites: userDoc.favorites.dishes.length
+        totalFavorites: userDoc.favoriteDishes.length
       }
     });
   } catch (error) {
@@ -278,7 +275,7 @@ export async function DELETE(request) {
 
     const userDoc = await User.findById(user.id);
     
-    if (!userDoc.favorites || !userDoc.favorites.dishes) {
+    if (!userDoc.favoriteDishes) {
       return NextResponse.json(
         { success: false, message: 'No favorite dishes found' },
         { status: 400 }
@@ -286,8 +283,8 @@ export async function DELETE(request) {
     }
 
     if (removeAll) {
-      const removedCount = userDoc.favorites.dishes.length;
-      userDoc.favorites.dishes = [];
+      const removedCount = userDoc.favoriteDishes.length;
+      userDoc.favoriteDishes = [];
       await userDoc.save();
 
       return NextResponse.json({
@@ -304,7 +301,7 @@ export async function DELETE(request) {
       );
     }
 
-    const dishIndex = userDoc.favorites.dishes.findIndex(
+    const dishIndex = userDoc.favoriteDishes.findIndex(
       dish => dish.restaurantId.toString() === restaurantId && dish.menuItemId.toString() === menuItemId
     );
 
@@ -315,7 +312,7 @@ export async function DELETE(request) {
       );
     }
 
-    userDoc.favorites.dishes.splice(dishIndex, 1);
+    userDoc.favoriteDishes.splice(dishIndex, 1);
     await userDoc.save();
 
     return NextResponse.json({
@@ -324,7 +321,7 @@ export async function DELETE(request) {
       data: {
         restaurantId,
         menuItemId,
-        totalFavorites: userDoc.favorites.dishes.length
+        totalFavorites: userDoc.favoriteDishes.length
       }
     });
   } catch (error) {

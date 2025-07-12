@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { Star, Clock, MapPin, Heart, Filter, Search } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
 import { getRestaurants } from '@/actions/restaurantActions';
+import { addToFavorites, removeFromFavorites, getUserFavorites } from '@/actions/favoritesActions';
+import { toast } from 'react-hot-toast';
 
 export default function RestaurantsPage() {
   const [user, setUser] = useState(null);
@@ -14,6 +16,8 @@ export default function RestaurantsPage() {
   const [restaurants, setRestaurants] = useState([]);
   const [restaurantsData, setRestaurantsData] = useState(null);
   const [loadingRestaurants, setLoadingRestaurants] = useState(false);
+  const [favoriteRestaurants, setFavoriteRestaurants] = useState(new Set());
+  const [togglingFavorite, setTogglingFavorite] = useState(new Set());
   const router = useRouter();
 
 
@@ -47,6 +51,49 @@ export default function RestaurantsPage() {
     }
   };
 
+  const fetchFavorites = async () => {
+    try {
+      const favoritesData = await getUserFavorites();
+      const favoriteIds = new Set(favoritesData.restaurants.map(restaurant => restaurant._id));
+      setFavoriteRestaurants(favoriteIds);
+    } catch (error) {
+      console.error('Failed to fetch favorites:', error);
+    }
+  };
+
+  const toggleFavorite = async (e, restaurantId) => {
+    e.stopPropagation();
+    
+    if (togglingFavorite.has(restaurantId)) return;
+    
+    setTogglingFavorite(prev => new Set([...prev, restaurantId]));
+    
+    try {
+      if (favoriteRestaurants.has(restaurantId)) {
+        await removeFromFavorites(restaurantId);
+        setFavoriteRestaurants(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(restaurantId);
+          return newSet;
+        });
+        toast.success('Removed from favorites');
+      } else {
+        await addToFavorites(restaurantId);
+        setFavoriteRestaurants(prev => new Set([...prev, restaurantId]));
+        toast.success('Added to favorites');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast.error('Failed to update favorites');
+    } finally {
+      setTogglingFavorite(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(restaurantId);
+        return newSet;
+      });
+    }
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -57,6 +104,7 @@ export default function RestaurantsPage() {
         }
         setUser(userData);
         await fetchRestaurants();
+        await fetchFavorites();
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/login');
@@ -142,8 +190,22 @@ export default function RestaurantsPage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                 
-                <button className="absolute top-4 right-4 p-2 bg-black/20 backdrop-blur-sm rounded-full text-white hover:bg-black/40 transition-all duration-200">
-                  <Heart className="h-5 w-5" />
+                <button 
+                  onClick={(e) => toggleFavorite(e, restaurant._id)}
+                  disabled={togglingFavorite.has(restaurant._id)}
+                  className={`absolute top-4 right-4 p-2 backdrop-blur-sm rounded-full transition-all duration-200 ${
+                    favoriteRestaurants.has(restaurant._id)
+                      ? 'bg-red-500/80 text-white hover:bg-red-600/80'
+                      : 'bg-black/20 text-white hover:bg-black/40'
+                  } ${togglingFavorite.has(restaurant._id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {togglingFavorite.has(restaurant._id) ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Heart className={`h-5 w-5 ${
+                      favoriteRestaurants.has(restaurant._id) ? 'fill-current' : ''
+                    }`} />
+                  )}
                 </button>
                 
                 <div className="absolute bottom-4 left-4 right-4">

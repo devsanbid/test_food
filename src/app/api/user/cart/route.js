@@ -182,8 +182,12 @@ export async function PUT(request) {
     const body = await request.json();
     const { action, itemIndex, quantity, couponCode } = body;
 
-    const cart = await Cart.findOne({ user: user.id, isActive: true });
-    if (!cart) {
+    let cart = await Cart.findOne({ user: user.id, isActive: true });
+    
+    // For sync-cart action, create a new cart if none exists
+    if (!cart && body.action === 'sync-cart') {
+      cart = await Cart.getOrCreateCart(user.id);
+    } else if (!cart) {
       return NextResponse.json(
         { success: false, message: 'Cart not found' },
         { status: 404 }
@@ -269,6 +273,63 @@ export async function PUT(request) {
         return NextResponse.json({
           success: true,
           message: 'Cart cleared successfully',
+          data: {
+            cart,
+            summary: cart.getSummary()
+          }
+        });
+
+      case 'sync-cart':
+        const { items } = body;
+        if (!items || !Array.isArray(items)) {
+          return NextResponse.json(
+            { success: false, message: 'Items array is required for sync' },
+            { status: 400 }
+          );
+        }
+
+        await cart.clearCart();
+
+        if (items.length > 0) {
+          const firstItem = items[0];
+          const restaurantId = firstItem.restaurantId || firstItem.restaurant?._id || firstItem.restaurant;
+          const restaurant = await Restaurant.findById(restaurantId);
+          
+          if (!restaurant || !restaurant.isActive || !restaurant.isVerified) {
+            return NextResponse.json(
+              { success: false, message: 'Restaurant is not available' },
+              { status: 400 }
+            );
+          }
+
+          cart.restaurant = restaurant._id;
+          cart.restaurantName = restaurant.name;
+          cart.deliveryFee = restaurant.deliveryFee || 2.50;
+          cart.minimumOrderAmount = restaurant.minimumOrderAmount || 0;
+
+          for (const item of items) {
+            await cart.addItem({
+              menuItem: item._id,
+              restaurant: restaurant._id,
+              name: item.name,
+              description: item.description,
+              price: item.price,
+              quantity: item.quantity,
+              image: item.imageUrl || item.image || item.img,
+              category: item.category,
+              customizations: item.customizations || [],
+              specialInstructions: item.specialInstructions || '',
+              isAvailable: true,
+              preparationTime: item.preparationTime || 15
+            });
+          }
+        }
+
+        await cart.save();
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Cart synced successfully',
           data: {
             cart,
             summary: cart.getSummary()

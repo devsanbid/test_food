@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { Star, Clock, MapPin, Heart, ArrowLeft, Plus, Minus, ShoppingCart, Phone, Info } from 'lucide-react';
+import ProductCard from '@/components/ProductCard';
 import { toast } from 'react-hot-toast';
 import { getCurrentUser } from '@/actions/authActions';
 import { getRestaurantById } from '@/actions/restaurantActions';
@@ -82,6 +83,7 @@ export default function RestaurantProfilePage() {
       name: item.name,
       price: item.price,
       imageUrl: item.image,
+      restaurantId: restaurant._id,
       restaurant: {
         _id: restaurant._id,
         name: restaurant.name
@@ -243,142 +245,26 @@ export default function RestaurantProfilePage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredMenuItems.map((item, index) => {
-                const quantity = getItemQuantity(item.id);
+                const dishWithRestaurant = {
+                  ...item,
+                  _id: item._id || item.id,
+                  restaurant: {
+                    _id: restaurant._id,
+                    name: restaurant.name,
+                    logo: restaurant.logo,
+                    cuisine: restaurant.cuisine,
+                    rating: restaurant.rating,
+                    deliveryTime: restaurant.deliveryTime,
+                    isActive: restaurant.isActive
+                  }
+                };
+                
                 return (
-                  <div
+                  <ProductCard
                     key={item._id || item.id || `menu-item-${index}`}
-                    className="bg-gray-800/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-700/50 hover:border-orange-500/50 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group"
-                  >
-                    {item.isPopular && (
-                      <div className="absolute top-4 left-4 z-10">
-                        <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                          Popular
-                        </span>
-                      </div>
-                    )}
-                    
-                    <div className="relative overflow-hidden">
-                      <img
-                        src={item.imageUrl || item.image || '/default-food.jpg'}
-                        alt={item.name}
-                        className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                      
-                      <button className="absolute top-4 right-4 p-2 bg-black/20 backdrop-blur-sm rounded-full text-white hover:bg-black/40 transition-all duration-200">
-                        <Heart className="h-5 w-5" />
-                      </button>
-                    </div>
-                    
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold text-white group-hover:text-orange-400 transition-colors duration-200 mb-1">
-                            {item.name}
-                          </h3>
-                          <div className="flex items-center gap-2 mb-2">
-                            {item.isVegetarian && (
-                              <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded-full text-xs font-medium">
-                                Vegetarian
-                              </span>
-                            )}
-                            {item.isVegan && (
-                              <span className="bg-green-600/20 text-green-300 px-2 py-1 rounded-full text-xs font-medium">
-                                Vegan
-                              </span>
-                            )}
-                            {item.spiceLevel && (
-                              <span className="bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-xs font-medium capitalize">
-                                {item.spiceLevel}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-orange-400 font-bold text-xl">
-                            ${item.price || '0.00'}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {item.isAvailable ? 'Available' : 'Out of Stock'}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <p className="text-gray-400 mb-4 text-sm leading-relaxed">{item.description}</p>
-                      
-                      <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-1">
-                            <Clock className="h-4 w-4 text-orange-400" />
-                            <span>{item.preparationTime ? `${item.preparationTime} min` : item.prepTime || '15-20 min'}</span>
-                          </div>
-                          {item.category && (
-                            <div className="flex items-center space-x-1">
-                              <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
-                              <span className="capitalize">{item.category}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {item.ingredients && item.ingredients.length > 0 && (
-                        <div className="mb-4">
-                          <p className="text-xs text-gray-500 mb-2">Ingredients:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {item.ingredients.slice(0, 4).map((ingredient, idx) => (
-                              <span key={idx} className="bg-gray-700/50 text-gray-300 px-2 py-1 rounded text-xs">
-                                {ingredient}
-                              </span>
-                            ))}
-                            {item.ingredients.length > 4 && (
-                              <span className="text-gray-500 text-xs">+{item.ingredients.length - 4} more</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center justify-between pt-2 border-t border-gray-700/50">
-                         {quantity > 0 ? (
-                           <div className="flex items-center justify-between w-full">
-                             <div className="flex items-center space-x-3 bg-gray-800/80 rounded-full px-3 py-2">
-                               <button
-                                 onClick={() => removeFromCartHandler(item.id)}
-                                 className="p-1.5 bg-gray-600 hover:bg-gray-500 rounded-full transition-colors duration-200 text-white"
-                               >
-                                 <Minus className="h-3 w-3" />
-                               </button>
-                               <span className="font-semibold text-white min-w-[2rem] text-center">{quantity}</span>
-                               <button
-                                 onClick={() => addToCartHandler(item)}
-                                 className="p-1.5 bg-orange-500 hover:bg-orange-600 rounded-full transition-colors duration-200 text-white"
-                               >
-                                 <Plus className="h-3 w-3" />
-                               </button>
-                             </div>
-                             <div className="text-right">
-                               <div className="text-orange-400 font-bold text-sm">
-                                 ${(item.price * quantity).toFixed(2)}
-                               </div>
-                               <div className="text-xs text-gray-500">Total</div>
-                             </div>
-                           </div>
-                         ) : (
-                           <button
-                             onClick={() => addToCartHandler(item)}
-                             disabled={!item.isAvailable}
-                             className={`w-full flex items-center justify-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-[1.02] ${
-                               item.isAvailable
-                                 ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg hover:shadow-xl'
-                                 : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                             }`}
-                           >
-                             <ShoppingCart className="h-4 w-4" />
-                             <span>{item.isAvailable ? 'Add to Cart' : 'Out of Stock'}</span>
-                           </button>
-                         )}
-                       </div>
-                    </div>
-                  </div>
+                    dish={dishWithRestaurant}
+                    onAddToCart={addToCartHandler}
+                  />
                 );
               })}
             </div>
