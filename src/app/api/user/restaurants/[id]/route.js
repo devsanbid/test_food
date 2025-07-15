@@ -88,6 +88,8 @@ export async function GET(request, { params }) {
       name: restaurant.name,
       description: restaurant.description,
       cuisine: restaurant.cuisine,
+      profileImage: restaurant.profileImage,
+      bannerImage: restaurant.bannerImage,
       address: restaurant.address,
       phone: restaurant.phone,
       email: restaurant.email,

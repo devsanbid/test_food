@@ -1,0 +1,13 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#f9fafb"/>
+  <rect x="50" y="50" width="300" height="200" rx="8" fill="#e5e7eb" stroke="#d1d5db" stroke-width="2"/>
+  <rect x="70" y="70" width="60" height="40" rx="4" fill="#f59e0b"/>
+  <rect x="150" y="70" width="60" height="40" rx="4" fill="#ef4444"/>
+  <rect x="230" y="70" width="60" height="40" rx="4" fill="#10b981"/>
+  <rect x="310" y="70" width="20" height="40" rx="4" fill="#6366f1"/>
+  <circle cx="200" cy="150" r="30" fill="#fbbf24"/>
+  <path d="M185 150l10 10 20-20" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="100" y="200" width="200" height="12" rx="6" fill="#d1d5db"/>
+  <rect x="120" y="220" width="160" height="8" rx="4" fill="#e5e7eb"/>
+  <text x="200" y="280" text-anchor="middle" fill="#6b7280" font-family="Arial, sans-serif" font-size="14" font-weight="bold">Restaurant Logo</text>
+</svg>

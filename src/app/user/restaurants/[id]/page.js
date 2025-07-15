@@ -4,7 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { Star, Clock, MapPin, Heart, ArrowLeft, Plus, Minus, ShoppingCart, Phone, Info } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
-import RestaurantReviews from '@/components/RestaurantReviews';
+
 import { toast } from 'react-hot-toast';
 import { getCurrentUser } from '@/actions/authActions';
 import { getRestaurantById } from '@/actions/restaurantActions';
@@ -27,6 +27,7 @@ export default function RestaurantProfilePage() {
     try {
       setLoadingRestaurant(true);
       const data = await getRestaurantById(restaurantId);
+      console.log("data: ", data)
 
       setRestaurant(data.restaurant);
       setMenuItems(data.restaurant.menu || []);
@@ -155,9 +156,9 @@ export default function RestaurantProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      <div className="relative h-80 overflow-hidden">
+      <div className="relative h-80">
         <img
-          src={restaurant.bannerImage || restaurant.coverImage || restaurant.image || '/default-restaurant-banner.jpg'}
+          src={restaurant.bannerImage}
           alt={restaurant.name}
           className="w-full h-full object-cover"
         />
@@ -236,16 +237,6 @@ export default function RestaurantProfilePage() {
             }`}
           >
             Restaurant Info
-          </button>
-          <button
-            onClick={() => setActiveTab('reviews')}
-            className={`pb-4 px-2 font-medium transition-colors duration-200 ${
-              activeTab === 'reviews'
-                ? 'text-orange-400 border-b-2 border-orange-400'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            Reviews ({restaurant.reviewCount || 0})
           </button>
         </div>
         
@@ -380,9 +371,7 @@ export default function RestaurantProfilePage() {
           </div>
         )}
         
-        {activeTab === 'reviews' && (
-          <RestaurantReviews restaurantId={restaurant._id} />
-        )}
+
       </div>
       
       {cart.length > 0 && (

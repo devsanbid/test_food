@@ -76,7 +76,7 @@ export default function ProductCard({ dish, onAddToCart, onRemoveFromCart }) {
           menuItemId: dish._id,
           name: dish.name,
           price: dish.price,
-          image: dish.image
+          image: dish.imageUrl || dish.image
         };
         await addDishToFavorites(dishData);
         setIsLiked(true);
@@ -109,7 +109,7 @@ export default function ProductCard({ dish, onAddToCart, onRemoveFromCart }) {
         {/* Image */}
         <div className="relative h-48 mb-4 rounded-xl overflow-hidden">
           <img
-            src={dish.image || dish.imageUrl || '/images/default-food.jpg'}
+            src={dish.imageUrl || dish.image || '/images/default-food.jpg'}
             alt={dish.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
