@@ -16,6 +16,7 @@ const notificationSchema = new mongoose.Schema({
       'order-out-for-delivery',
       'order-delivered',
       'order-cancelled',
+      'order-time-updated',
       'payment-successful',
       'payment-failed',
       'refund-processed',
@@ -259,53 +260,85 @@ notificationSchema.statics.markAllAsRead = async function(userId) {
 };
 
 // Static method to create order notification
-notificationSchema.statics.createOrderNotification = async function(userId, orderId, type, customData = {}) {
-  const notificationData = {
-    user: userId,
-    relatedOrder: orderId,
-    type,
-    channels: ['in-app', 'push'],
-    priority: 'high',
-    ...customData
-  };
+notificationSchema.statics.createOrderNotification = async function(userId, type, customData = {}) {
+  
+  if (!userId || !type) {
+    throw new Error('userId and type are required for notification creation');
+  }
+  
+  if (typeof type !== 'string') {
+    throw new Error(`Invalid notification type: expected string, got ${typeof type}. Value: ${JSON.stringify(type)}`);
+  }
   
   // Set title and message based on type
+  const orderNumber = customData.orderNumber || 'your order';
+  const restaurantName = customData.restaurantName || 'the restaurant';
+  
+  let title, message, icon = 'order', priority = 'high', actionButton;
+  
   switch (type) {
     case 'order-confirmed':
-      notificationData.title = 'Order Confirmed!';
-      notificationData.message = 'Your order has been confirmed and is being prepared.';
-      notificationData.icon = 'order';
+      title = 'Order Confirmed!';
+      message = `Your order #${orderNumber} has been confirmed by ${restaurantName} and is being prepared.`;
+      icon = 'order';
       break;
     case 'order-preparing':
-      notificationData.title = 'Order Being Prepared';
-      notificationData.message = 'Your order is now being prepared by the restaurant.';
-      notificationData.icon = 'order';
+      title = 'Order Being Prepared';
+      message = `Your order #${orderNumber} is now being prepared by ${restaurantName}.`;
+      icon = 'order';
       break;
     case 'order-ready':
-      notificationData.title = 'Order Ready!';
-      notificationData.message = 'Your order is ready for pickup/delivery.';
-      notificationData.icon = 'order';
+      title = 'Order Ready!';
+      message = `Your order #${orderNumber} is ready for pickup/delivery.`;
+      icon = 'order';
       break;
     case 'order-out-for-delivery':
-      notificationData.title = 'Out for Delivery';
-      notificationData.message = 'Your order is on its way to you!';
-      notificationData.icon = 'delivery';
+      title = 'Out for Delivery';
+      message = `Your order #${orderNumber} is on its way to you!${customData.deliveryPersonName ? ` Delivered by ${customData.deliveryPersonName}` : ''}`;
+      icon = 'delivery';
       break;
     case 'order-delivered':
-      notificationData.title = 'Order Delivered';
-      notificationData.message = 'Your order has been delivered. Enjoy your meal!';
-      notificationData.icon = 'delivery';
-      notificationData.actionButton = {
+      title = 'Order Delivered';
+      message = `Your order #${orderNumber} has been delivered. Enjoy your meal!`;
+      icon = 'delivery';
+      actionButton = {
         text: 'Rate Order',
-        url: `/user/orders/${orderId}/review`,
+        url: `/user/orders/${customData.orderId}/review`,
         action: 'navigate'
       };
       break;
     case 'order-cancelled':
-      notificationData.title = 'Order Cancelled';
-      notificationData.message = 'Your order has been cancelled.';
-      notificationData.icon = 'order';
+      title = 'Order Cancelled';
+      message = `Your order #${orderNumber} has been cancelled.${customData.cancellationReason ? ` Reason: ${customData.cancellationReason}` : ''}`;
+      icon = 'order';
       break;
+    case 'order-time-updated':
+      title = 'Preparation Time Updated';
+      message = `Estimated preparation time for order #${orderNumber} has been updated${customData.estimatedTime ? ` to ${customData.estimatedTime} minutes` : ''}.`;
+      icon = 'order';
+      priority = 'medium';
+      break;
+    default:
+      title = 'Order Update';
+      message = `Your order #${orderNumber} has been updated.`;
+      icon = 'order';
+  }
+  
+  const notificationData = {
+    user: userId,
+    type: String(type),
+    title: title,
+    message: message,
+    relatedOrder: customData.orderId || null,
+    relatedRestaurant: customData.restaurantId || null,
+    channels: ['in-app', 'push'],
+    priority: priority,
+    icon: icon,
+    data: customData
+  };
+  
+  if (actionButton) {
+    notificationData.actionButton = actionButton;
   }
   
   return await this.create(notificationData);

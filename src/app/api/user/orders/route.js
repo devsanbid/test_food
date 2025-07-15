@@ -4,6 +4,7 @@ import Order from '@/models/Order';
 import Cart from '@/models/Cart';
 import Restaurant from '@/models/Restaurant';
 import Notification from '@/models/Notification';
+import Review from '@/models/Review';
 import { connectDB } from '@/lib/mongodb';
 import mongoose from 'mongoose';
 
@@ -31,9 +32,16 @@ export async function GET(request) {
     const search = searchParams.get('search') || '';
     const startDate = searchParams.get('startDate') || '';
     const endDate = searchParams.get('endDate') || '';
+    const hasReview = searchParams.get('hasReview');
+    const restaurant = searchParams.get('restaurant');
 
     // Build query
     let query = { customer: user.id };
+
+    // Restaurant filter
+    if (restaurant) {
+      query.restaurant = restaurant;
+    }
 
     // Status filter
     if (status) {
@@ -50,6 +58,15 @@ export async function GET(request) {
       query.createdAt = { $gte: new Date(startDate) };
     } else if (endDate) {
       query.createdAt = { $lte: new Date(endDate) };
+    }
+
+    // Review filter
+    if (hasReview !== null && hasReview !== '') {
+      if (hasReview === 'false') {
+        query['rating.overall'] = { $exists: false };
+      } else if (hasReview === 'true') {
+        query['rating.overall'] = { $exists: true };
+      }
     }
 
     // Search filter (restaurant name or order number)
@@ -410,21 +427,11 @@ export async function POST(request) {
     // Create order notification
     await Notification.createOrderNotification(
       user.id,
-      order._id,
       'order-confirmed',
       {
-        title: 'Order Placed Successfully!',
-        message: `Your order #${order.orderNumber} has been placed and is awaiting confirmation.`,
-        data: {
-          orderId: order._id,
-          orderNumber: order.orderNumber,
-          restaurantName: restaurant.name
-        },
-        actionButton: {
-          text: 'View Order',
-          url: `/user/orders/${order._id}`,
-          action: 'navigate'
-        }
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        restaurantName: restaurant.name
       }
     );
 

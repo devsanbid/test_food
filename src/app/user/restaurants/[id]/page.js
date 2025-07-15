@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { Star, Clock, MapPin, Heart, ArrowLeft, Plus, Minus, ShoppingCart, Phone, Info } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
+import RestaurantReviews from '@/components/RestaurantReviews';
 import { toast } from 'react-hot-toast';
 import { getCurrentUser } from '@/actions/authActions';
 import { getRestaurantById } from '@/actions/restaurantActions';
@@ -26,8 +27,12 @@ export default function RestaurantProfilePage() {
     try {
       setLoadingRestaurant(true);
       const data = await getRestaurantById(restaurantId);
+      console.log('Full restaurant data received:', data);
+      console.log('Menu data from API:', data.restaurant.menu);
+      console.log('Menu categories from API:', data.restaurant.menuCategories);
       setRestaurant(data.restaurant);
       setMenuItems(data.restaurant.menu || []);
+      console.log('MenuItems state after setting:', data.restaurant.menu || []);
     } catch (error) {
       console.error('Failed to fetch restaurant data:', error);
       router.push('/user/restaurants');
@@ -38,11 +43,11 @@ export default function RestaurantProfilePage() {
 
   const categories = [
     { id: 'all', name: 'All Items', count: menuItems.length },
-    ...restaurant?.menuCategories?.map(category => ({
+    ...(restaurant?.menuCategories || []).map(category => ({
       id: category.toLowerCase(),
       name: category.charAt(0).toUpperCase() + category.slice(1),
       count: menuItems.filter(item => item.category === category).length
-    })) || []
+    }))
   ];
 
   useEffect(() => {
@@ -75,6 +80,8 @@ export default function RestaurantProfilePage() {
   const filteredMenuItems = menuItems.filter(item => 
     selectedCategory === 'all' || item.category === selectedCategory
   );
+
+
 
   const addToCartHandler = (item) => {
     // Convert item to the expected format
@@ -152,7 +159,7 @@ export default function RestaurantProfilePage() {
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="relative h-80 overflow-hidden">
         <img
-          src={restaurant.coverImage || restaurant.image || '/default-restaurant.jpg'}
+          src={restaurant.bannerImage || restaurant.coverImage || restaurant.image || '/default-restaurant-banner.jpg'}
           alt={restaurant.name}
           className="w-full h-full object-cover"
         />
@@ -167,8 +174,16 @@ export default function RestaurantProfilePage() {
         
         <div className="absolute bottom-6 left-6 right-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">{restaurant.name}</h1>
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-800 border-2 border-white shadow-lg">
+                <img
+                  src={restaurant.profileImage || restaurant.logo || '/images/default-restaurant.jpg'}
+                  alt={`${restaurant.name} profile`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold mb-2">{restaurant.name}</h1>
               <div className="flex items-center space-x-4 text-gray-300">
                 <div className="flex items-center space-x-1">
                   <Star className="h-5 w-5 text-yellow-400 fill-current" />
@@ -224,6 +239,16 @@ export default function RestaurantProfilePage() {
           >
             Restaurant Info
           </button>
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`pb-4 px-2 font-medium transition-colors duration-200 ${
+              activeTab === 'reviews'
+                ? 'text-orange-400 border-b-2 border-orange-400'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Reviews ({restaurant.reviewCount || 0})
+          </button>
         </div>
         
         {activeTab === 'menu' && (
@@ -245,29 +270,36 @@ export default function RestaurantProfilePage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredMenuItems.map((item, index) => {
-                const dishWithRestaurant = {
-                  ...item,
-                  _id: item._id || item.id,
-                  restaurant: {
-                    _id: restaurant._id,
-                    name: restaurant.name,
-                    logo: restaurant.logo,
-                    cuisine: restaurant.cuisine,
-                    rating: restaurant.rating,
-                    deliveryTime: restaurant.deliveryTime,
-                    isActive: restaurant.isActive
-                  }
-                };
-                
-                return (
-                  <ProductCard
-                    key={item._id || item.id || `menu-item-${index}`}
-                    dish={dishWithRestaurant}
-                    onAddToCart={addToCartHandler}
-                  />
-                );
-              })}
+              {filteredMenuItems.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-gray-400 text-lg">No menu items found for this category.</p>
+                </div>
+              ) : (
+                filteredMenuItems.map((item, index) => {
+
+                  const dishWithRestaurant = {
+                    ...item,
+                    _id: item._id || item.id,
+                    restaurant: {
+                      _id: restaurant._id,
+                      name: restaurant.name,
+                      logo: restaurant.logo,
+                      cuisine: restaurant.cuisine,
+                      rating: restaurant.rating,
+                      deliveryTime: restaurant.deliveryTime,
+                      isActive: restaurant.isActive
+                    }
+                  };
+                  
+                  return (
+                    <ProductCard
+                      key={item._id || item.id || `menu-item-${index}`}
+                      dish={dishWithRestaurant}
+                      onAddToCart={addToCartHandler}
+                    />
+                  );
+                })
+              )}
             </div>
           </div>
         )}
@@ -330,6 +362,10 @@ export default function RestaurantProfilePage() {
             </div>
           </div>
         )}
+        
+        {activeTab === 'reviews' && (
+          <RestaurantReviews restaurantId={restaurant._id} />
+        )}
       </div>
       
       {cart.length > 0 && (
@@ -345,6 +381,7 @@ export default function RestaurantProfilePage() {
           </button>
         </div>
       )}
+    </div>
     </div>
   );
 }

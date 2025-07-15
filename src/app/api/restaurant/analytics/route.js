@@ -100,6 +100,26 @@ export async function GET(request) {
 }
 
 async function getMetrics(restaurantId, startDate, endDate) {
+  console.log('Analytics Debug - Restaurant ID:', restaurantId);
+  console.log('Analytics Debug - Date Range:', { startDate, endDate });
+  
+  const totalOrders = await Order.countDocuments({ restaurant: restaurantId });
+  const deliveredOrders = await Order.countDocuments({ restaurant: restaurantId, status: 'delivered' });
+  const ordersInRange = await Order.countDocuments({ 
+    restaurant: restaurantId, 
+    createdAt: { $gte: startDate, $lte: endDate } 
+  });
+  const deliveredInRange = await Order.countDocuments({ 
+    restaurant: restaurantId, 
+    status: 'delivered',
+    createdAt: { $gte: startDate, $lte: endDate } 
+  });
+  
+  console.log('Analytics Debug - Total orders for restaurant:', totalOrders);
+  console.log('Analytics Debug - Delivered orders for restaurant:', deliveredOrders);
+  console.log('Analytics Debug - Orders in date range:', ordersInRange);
+  console.log('Analytics Debug - Delivered orders in date range:', deliveredInRange);
+  
   const [revenueResult, ordersCount, customersResult, ratingResult] = await Promise.all([
     Order.aggregate([
       {
@@ -152,8 +172,19 @@ async function getMetrics(restaurantId, startDate, endDate) {
     ])
   ]);
 
+  const revenue = revenueResult[0]?.total || 0;
+  console.log('Analytics Debug - Revenue calculation result:', revenueResult);
+  console.log('Analytics Debug - Final revenue:', revenue);
+  
+  const allOrderStatuses = await Order.aggregate([
+    { $match: { restaurant: restaurantId } },
+    { $group: { _id: '$status', count: { $sum: 1 }, totalRevenue: { $sum: '$pricing.total' } } },
+    { $sort: { count: -1 } }
+  ]);
+  console.log('Analytics Debug - All order statuses for restaurant:', allOrderStatuses);
+  
   return {
-    revenue: revenueResult[0]?.total || 0,
+    revenue: revenue,
     orders: ordersCount,
     customers: customersResult[0]?.uniqueCustomers || 0,
     rating: ratingResult[0]?.avgRating || 0

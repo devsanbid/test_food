@@ -14,6 +14,14 @@ export async function POST(request) {
     const body = await request.json();
     const { code, restaurantId, orderAmount, items } = body;
 
+    console.log('Discount validation request:', {
+      code,
+      codeUpperCase: code?.toUpperCase(),
+      restaurantId,
+      orderAmount,
+      items: items?.length || 0
+    });
+
     if (!code || !restaurantId || !orderAmount) {
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
@@ -25,6 +33,18 @@ export async function POST(request) {
       code: code.toUpperCase(),
       restaurant: restaurantId,
       isActive: true
+    });
+
+    console.log('Discount query result:', {
+      found: !!discount,
+      searchCode: code.toUpperCase(),
+      searchRestaurantId: restaurantId,
+      discountData: discount ? {
+        id: discount._id,
+        code: discount.code,
+        restaurant: discount.restaurant,
+        isActive: discount.isActive
+      } : null
     });
 
     if (!discount) {

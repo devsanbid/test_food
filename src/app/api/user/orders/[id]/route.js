@@ -209,17 +209,12 @@ export async function PUT(request, { params }) {
         // Create cancellation notification
         await Notification.createOrderNotification(
           user.id,
-          order._id,
           'order-cancelled',
           {
-            title: 'Order Cancelled',
-            message: `Your order #${order.orderNumber} has been cancelled. Refund will be processed within 3-5 business days.`,
-            data: {
-              orderId: order._id,
-              orderNumber: order.orderNumber,
-              restaurantName: order.restaurant.name,
-              refundAmount: order.pricing.total
-            }
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            restaurantName: order.restaurant.name,
+            cancellationReason: reason
           }
         );
 

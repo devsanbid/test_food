@@ -80,6 +80,8 @@ export default function RestaurantProfile() {
     acceptsOnlineOrders: true,
     hasDelivery: true,
     hasPickup: true,
+    profileImage: '',
+    bannerImage: '',
     operatingHours: {
       monday: { open: '09:00', close: '22:00', closed: false },
       tuesday: { open: '09:00', close: '22:00', closed: false },
@@ -96,6 +98,8 @@ export default function RestaurantProfile() {
       accountHolderName: ''
     }
   });
+  const [uploadingProfile, setUploadingProfile] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   const tabs = [
     { id: 'basic', name: 'Basic Info', icon: Building },
@@ -170,6 +174,8 @@ export default function RestaurantProfile() {
           acceptsOnlineOrders: data.restaurant.acceptsOnlineOrders !== undefined ? data.restaurant.acceptsOnlineOrders : true,
           hasDelivery: data.restaurant.hasDelivery !== undefined ? data.restaurant.hasDelivery : true,
           hasPickup: data.restaurant.hasPickup !== undefined ? data.restaurant.hasPickup : true,
+          profileImage: data.restaurant.profileImage || '',
+          bannerImage: data.restaurant.bannerImage || '',
           operatingHours: data.restaurant.operatingHours || formData.operatingHours,
           bankDetails: data.restaurant.bankDetails || formData.bankDetails
         });
@@ -216,6 +222,57 @@ export default function RestaurantProfile() {
         }
       }
     }));
+  };
+
+  const handleImageUpload = async (file, type) => {
+    const setUploading = type === 'profile' ? setUploadingProfile : setUploadingBanner;
+    const imageType = type === 'profile' ? 'restaurant-profile' : 'restaurant-banner';
+    
+    try {
+      setUploading(true);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', imageType);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        handleInputChange(type === 'profile' ? 'profileImage' : 'bannerImage', data.url);
+        setToast({ show: true, message: `${type === 'profile' ? 'Profile' : 'Banner'} image uploaded successfully!`, type: 'success' });
+      } else {
+        setToast({ show: true, message: data.error || 'Failed to upload image', type: 'error' });
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setToast({ show: true, message: 'Error uploading image', type: 'error' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileSelect = (event, type) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setToast({ show: true, message: 'File size must be less than 5MB', type: 'error' });
+        return;
+      }
+      
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setToast({ show: true, message: 'Only JPEG, PNG, and WebP files are allowed', type: 'error' });
+        return;
+      }
+      
+      handleImageUpload(file, type);
+    }
   };
 
   const validateForm = () => {
@@ -280,6 +337,78 @@ export default function RestaurantProfile() {
 
   const renderBasicInfo = () => (
     <div className="space-y-6">
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Profile Image
+            </label>
+            <div className="flex items-center space-x-4">
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-800 border border-gray-600">
+                <img
+                  src={formData.profileImage || '/images/default-restaurant.jpg'}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {isEditing && (
+                <div>
+                  <input
+                    type="file"
+                    id="profileImage"
+                    accept="image/*"
+                    onChange={(e) => handleFileSelect(e, 'profile')}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="profileImage"
+                    className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors ${
+                      uploadingProfile ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {uploadingProfile ? 'Uploading...' : 'Upload Profile Image'}
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Banner Image
+            </label>
+            <div className="space-y-4">
+              <div className="w-full h-32 rounded-lg overflow-hidden bg-gray-800 border border-gray-600">
+                <img
+                  src={formData.bannerImage || '/default-restaurant-banner.jpg'}
+                  alt="Banner"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {isEditing && (
+                <div>
+                  <input
+                    type="file"
+                    id="bannerImage"
+                    accept="image/*"
+                    onChange={(e) => handleFileSelect(e, 'banner')}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="bannerImage"
+                    className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors ${
+                      uploadingBanner ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {uploadingBanner ? 'Uploading...' : 'Upload Banner Image'}
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">

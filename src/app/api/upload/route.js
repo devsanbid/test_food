@@ -58,6 +58,12 @@ export async function POST(request) {
       case 'menu-item':
         uploadDir = 'menu-items';
         break;
+      case 'restaurant-profile':
+        uploadDir = 'restaurants/profiles';
+        break;
+      case 'restaurant-banner':
+        uploadDir = 'restaurants/banners';
+        break;
       default:
         uploadDir = 'general';
     }

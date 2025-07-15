@@ -274,16 +274,50 @@ cartSchema.methods.removeItem = function(itemIndex) {
 };
 
 // Method to clear entire cart
-cartSchema.methods.clearCart = function() {
-  this.items = [];
-  this.restaurant = undefined;
-  this.restaurantName = undefined;
-  this.couponCode = undefined;
-  this.discount = 0;
-  this.subtotal = 0;
-  this.itemCount = 0;
+cartSchema.methods.clearCart = async function() {
+  const maxRetries = 3;
+  let retries = 0;
   
-  return this.save();
+  while (retries < maxRetries) {
+    try {
+      const updatedCart = await this.constructor.findOneAndUpdate(
+        { _id: this._id },
+        {
+          $set: {
+            items: [],
+            restaurant: undefined,
+            restaurantName: undefined,
+            couponCode: undefined,
+            discount: 0,
+            subtotal: 0,
+            itemCount: 0,
+            lastUpdated: new Date()
+          }
+        },
+        { new: true, runValidators: true }
+      );
+      
+      if (updatedCart) {
+        Object.assign(this, updatedCart.toObject());
+        return this;
+      }
+      
+      throw new Error('Cart not found during clear operation');
+    } catch (error) {
+      if (error.name === 'VersionError' && retries < maxRetries - 1) {
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 100 * retries));
+        const freshCart = await this.constructor.findById(this._id);
+        if (freshCart) {
+          Object.assign(this, freshCart.toObject());
+        }
+        continue;
+      }
+      throw error;
+    }
+  }
+  
+  throw new Error('Failed to clear cart after multiple retries');
 };
 
 // Method to apply coupon

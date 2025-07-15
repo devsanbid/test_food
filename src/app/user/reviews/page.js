@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Star, ThumbsUp, ThumbsDown, Filter, Search, Calendar, MapPin, Clock, Edit, Trash2, Camera } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+import { toast } from 'react-hot-toast';
 
 export default function ReviewsPage() {
   const [user, setUser] = useState(null);
@@ -14,74 +15,9 @@ export default function ReviewsPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const router = useRouter();
 
-  const [pendingReviews, setPendingReviews] = useState([
-    {
-      id: 1,
-      orderId: '34562',
-      restaurantName: 'Ocean Delights',
-      restaurantImage: '/api/placeholder/60/60',
-      items: ['Grilled Salmon', 'Caesar Salad', 'Chocolate Cake'],
-      deliveredAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      totalAmount: 45.99
-    },
-    {
-      id: 2,
-      orderId: '34561',
-      restaurantName: 'Italian Corner',
-      restaurantImage: '/api/placeholder/60/60',
-      items: ['Margherita Pizza', 'Garlic Bread'],
-      deliveredAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
-      totalAmount: 28.50
-    }
-  ]);
+  const [pendingReviews, setPendingReviews] = useState([]);
 
-  const [myReviews, setMyReviews] = useState([
-    {
-      id: 1,
-      orderId: '34560',
-      restaurantName: 'Spice House',
-      restaurantImage: '/api/placeholder/60/60',
-      items: ['Chicken Biryani', 'Naan Bread'],
-      rating: 5,
-      foodRating: 5,
-      deliveryRating: 4,
-      comment: 'Absolutely delicious! The biryani was perfectly spiced and the delivery was quick. Will definitely order again.',
-      images: ['/api/placeholder/100/100', '/api/placeholder/100/100'],
-      helpful: 12,
-      reviewDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      restaurantReply: 'Thank you for the wonderful review! We\'re thrilled you enjoyed our biryani. Looking forward to serving you again!'
-    },
-    {
-      id: 2,
-      orderId: '34559',
-      restaurantName: 'Burger Palace',
-      restaurantImage: '/api/placeholder/60/60',
-      items: ['Classic Burger', 'French Fries', 'Milkshake'],
-      rating: 3,
-      foodRating: 4,
-      deliveryRating: 2,
-      comment: 'Food was good but delivery took much longer than expected. Burger was cold when it arrived.',
-      images: [],
-      helpful: 5,
-      reviewDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      restaurantReply: null
-    },
-    {
-      id: 3,
-      orderId: '34558',
-      restaurantName: 'Sushi Zen',
-      restaurantImage: '/api/placeholder/60/60',
-      items: ['California Roll', 'Salmon Sashimi', 'Miso Soup'],
-      rating: 4,
-      foodRating: 5,
-      deliveryRating: 4,
-      comment: 'Fresh sushi and great presentation. Only minor issue was the packaging could be better to prevent the rolls from moving around.',
-      images: ['/api/placeholder/100/100'],
-      helpful: 8,
-      reviewDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-      restaurantReply: 'Thank you for the feedback! We\'ve improved our packaging based on customer suggestions like yours.'
-    }
-  ]);
+  const [myReviews, setMyReviews] = useState([]);
 
   const [newReview, setNewReview] = useState({
     rating: 0,
@@ -90,6 +26,62 @@ export default function ReviewsPage() {
     comment: '',
     images: []
   });
+
+  const fetchPendingReviews = async () => {
+    try {
+      const response = await fetch('/api/user/orders?status=delivered&hasReview=false', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const pending = data.data.orders.map(order => ({
+            id: order._id,
+            orderId: order.orderNumber,
+            restaurantName: order.restaurant.name,
+            restaurantImage: order.restaurant.logo || '/placeholder-food.jpg',
+            items: order.items.map(item => item.name),
+            deliveredAt: new Date(order.actualDeliveryTime || order.updatedAt),
+            totalAmount: order.pricing.total
+          }));
+          setPendingReviews(pending);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch pending reviews:', error);
+    }
+  };
+
+  const fetchMyReviews = async () => {
+    try {
+      const response = await fetch('/api/user/reviews', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const reviews = data.data.reviews.map(review => ({
+            id: review._id,
+            orderId: review.order.orderNumber,
+            restaurantName: review.restaurant.name,
+            restaurantImage: review.restaurant.logo || '/placeholder-food.jpg',
+            items: review.orderDetails?.items?.map(item => item.name) || [],
+            rating: review.rating.overall,
+            foodRating: review.rating.food,
+            deliveryRating: review.rating.delivery,
+            comment: review.comment,
+            images: review.images || [],
+            helpful: review.helpfulVotes,
+            reviewDate: new Date(review.createdAt),
+            restaurantReply: review.response?.message || null
+          }));
+          setMyReviews(reviews);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch reviews:', error);
+    }
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -100,6 +92,7 @@ export default function ReviewsPage() {
           return;
         }
         setUser(userData);
+        await Promise.all([fetchPendingReviews(), fetchMyReviews()]);
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/login');
@@ -144,32 +137,50 @@ export default function ReviewsPage() {
     setShowReviewModal(true);
   };
 
-  const submitReview = () => {
+  const submitReview = async () => {
     if (newReview.rating === 0) {
       alert('Please provide an overall rating');
       return;
     }
 
-    const review = {
-      id: myReviews.length + 1,
-      orderId: selectedOrder.orderId,
-      restaurantName: selectedOrder.restaurantName,
-      restaurantImage: selectedOrder.restaurantImage,
-      items: selectedOrder.items,
-      rating: newReview.rating,
-      foodRating: newReview.foodRating,
-      deliveryRating: newReview.deliveryRating,
-      comment: newReview.comment,
-      images: newReview.images,
-      helpful: 0,
-      reviewDate: new Date(),
-      restaurantReply: null
-    };
+    try {
+      const response = await fetch('/api/user/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          restaurantId: selectedOrder.restaurantId,
+          orderId: selectedOrder.id,
+          rating: {
+            overall: newReview.rating,
+            food: newReview.foodRating || newReview.rating,
+            service: newReview.rating,
+            delivery: newReview.deliveryRating || newReview.rating
+          },
+          comment: newReview.comment,
+          images: newReview.images
+        })
+      });
 
-    setMyReviews([review, ...myReviews]);
-    setPendingReviews(pendingReviews.filter(p => p.id !== selectedOrder.id));
-    setShowReviewModal(false);
-    setSelectedOrder(null);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          await Promise.all([fetchPendingReviews(), fetchMyReviews()]);
+          setShowReviewModal(false);
+          setSelectedOrder(null);
+          alert('Review submitted successfully!');
+        } else {
+          alert(data.message || 'Failed to submit review');
+        }
+      } else {
+        alert('Failed to submit review');
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      alert('Failed to submit review');
+    }
   };
 
   const filteredReviews = myReviews.filter(review => {

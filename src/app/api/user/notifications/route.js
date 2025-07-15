@@ -68,8 +68,8 @@ export async function GET(request) {
 
     // Execute query with pagination
     const notifications = await Notification.find(query)
-      .populate('relatedData.order', 'orderNumber status')
-      .populate('relatedData.restaurant', 'name logo')
+      .populate('relatedOrder', 'orderNumber status')
+      .populate('relatedRestaurant', 'name logo')
       .sort(sort)
       .skip(skip)
       .limit(limit);

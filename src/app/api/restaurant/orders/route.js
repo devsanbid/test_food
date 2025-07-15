@@ -58,7 +58,8 @@ export async function GET(request) {
 
     const [orders, totalOrders] = await Promise.all([
       Order.find(filter)
-        .populate('user', 'firstName lastName email phone')
+        .populate('customer', 'firstName lastName email phone')
+        .populate('restaurant', 'name logo')
         .sort(sortOptions)
         .skip(skip)
         .limit(limit)
@@ -83,7 +84,7 @@ export async function GET(request) {
       confirmed: 0,
       preparing: 0,
       ready: 0,
-      outForDelivery: 0,
+      'out-for-delivery': 0,
       delivered: 0,
       cancelled: 0,
       totalRevenue: 0
@@ -143,7 +144,7 @@ export async function PUT(request) {
     }
 
     const order = await Order.findOne({ _id: orderId, restaurant: restaurant._id })
-      .populate('user', 'firstName lastName email phone');
+      .populate('customer', 'firstName lastName email phone');
     
     if (!order) {
       return NextResponse.json(
@@ -199,7 +200,7 @@ export async function PUT(request) {
             { status: 400 }
           );
         }
-        order.status = 'outForDelivery';
+        order.status = 'out-for-delivery';
         order.outForDeliveryAt = new Date();
         if (updateData.deliveryPersonName) {
           order.deliveryPersonName = updateData.deliveryPersonName;
@@ -211,7 +212,7 @@ export async function PUT(request) {
         break;
 
       case 'deliver':
-        if (!['ready', 'outForDelivery'].includes(order.status)) {
+        if (!['ready', 'out-for-delivery'].includes(order.status)) {
           return NextResponse.json(
             { success: false, message: 'Order must be ready or out for delivery' },
             { status: 400 }
@@ -266,16 +267,53 @@ export async function PUT(request) {
     order.updatedAt = new Date();
     await order.save();
 
+    // Create notification using the sophisticated method from the model
     if (notificationMessage) {
-      const notification = new Notification({
-        user: order.user._id,
-        title: 'Order Update',
-        message: notificationMessage,
-        type: notificationType,
-        relatedOrder: order._id,
-        relatedRestaurant: restaurant._id
-      });
-      await notification.save();
+      let notificationTypeForModel = 'order-update';
+      
+      // Map action to proper notification type
+      switch (action) {
+        case 'confirm':
+          notificationTypeForModel = 'order-confirmed';
+          break;
+        case 'start-preparing':
+          notificationTypeForModel = 'order-preparing';
+          break;
+        case 'ready':
+          notificationTypeForModel = 'order-ready';
+          break;
+        case 'out-for-delivery':
+          notificationTypeForModel = 'order-out-for-delivery';
+          break;
+        case 'deliver':
+          notificationTypeForModel = 'order-delivered';
+          break;
+        case 'cancel':
+          notificationTypeForModel = 'order-cancelled';
+          break;
+        case 'update-preparation-time':
+          notificationTypeForModel = 'order-time-updated';
+          break;
+      }
+      
+      try {
+        await Notification.createOrderNotification(
+          order.customer._id,
+          notificationTypeForModel,
+          {
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            restaurantName: restaurant.name,
+            restaurantId: restaurant._id,
+            estimatedTime: action === 'update-preparation-time' ? updateData.estimatedTime : null,
+            deliveryPersonName: updateData.deliveryPersonName || null,
+            deliveryPersonPhone: updateData.deliveryPersonPhone || null,
+            cancellationReason: updateData.reason || null
+          }
+        );
+      } catch (notificationError) {
+        console.error('Notification creation failed:', notificationError);
+      }
     }
 
     return NextResponse.json({
@@ -357,7 +395,7 @@ export async function POST(request) {
         }
 
         const exportOrders = await Order.find(exportFilter)
-          .populate('user', 'firstName lastName email phone')
+          .populate('customer', 'firstName lastName email phone')
           .sort({ createdAt: -1 })
           .lean();
 

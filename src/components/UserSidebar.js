@@ -44,11 +44,6 @@ const navigationItems = [
     icon: ShoppingCart
   },
   {
-    name: 'Checkout',
-    href: '/user/checkout',
-    icon: CreditCard
-  },
-  {
     name: 'Order History',
     href: '/user/orderhistory',
     icon: Clock
@@ -69,25 +64,10 @@ const navigationItems = [
     icon: Star
   },
   {
-    name: 'Loyalty Points',
-    href: '/user/loyalty',
-    icon: Gift
-  },
-  {
-    name: 'Support',
-    href: '/user/support',
-    icon: Headphones
-  },
-  {
     name: 'Profile',
     href: '/user/profile',
     icon: User
   },
-  {
-    name: 'Settings',
-    href: '/user/settings',
-    icon: Settings
-  }
 ];
 
 export default function UserSidebar() {
@@ -114,9 +94,8 @@ export default function UserSidebar() {
         <Menu className="h-6 w-6" />
       </button>
 
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
@@ -136,17 +115,16 @@ export default function UserSidebar() {
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
-            
+
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive
+                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive
                     ? 'bg-orange-500 text-white'
                     : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}
+                  }`}
               >
                 <Icon className="h-5 w-5 flex-shrink-0" />
                 <span className="font-medium">{item.name}</span>

@@ -106,7 +106,9 @@ export async function PUT(request) {
       hasDelivery: body.hasDelivery,
       hasPickup: body.hasPickup,
       operatingHours: body.operatingHours,
-      bankDetails: body.bankDetails
+      bankDetails: body.bankDetails,
+      profileImage: body.profileImage,
+      bannerImage: body.bannerImage
     };
 
     // Remove undefined fields

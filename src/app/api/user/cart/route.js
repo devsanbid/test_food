@@ -268,7 +268,15 @@ export async function PUT(request) {
         });
 
       case 'clear-cart':
-        await cart.clearCart();
+        try {
+          await cart.clearCart();
+        } catch (clearError) {
+          console.error('Error clearing cart:', clearError);
+          return NextResponse.json(
+            { success: false, message: 'Failed to clear cart' },
+            { status: 500 }
+          );
+        }
         
         return NextResponse.json({
           success: true,
@@ -288,7 +296,15 @@ export async function PUT(request) {
           );
         }
 
-        await cart.clearCart();
+        try {
+          await cart.clearCart();
+        } catch (clearError) {
+          console.error('Error clearing cart during sync:', clearError);
+          return NextResponse.json(
+            { success: false, message: 'Failed to clear cart for sync' },
+            { status: 500 }
+          );
+        }
 
         if (items.length > 0) {
           const firstItem = items[0];
@@ -382,7 +398,15 @@ export async function DELETE(request) {
       );
     }
 
-    await cart.clearCart();
+    try {
+      await cart.clearCart();
+    } catch (clearError) {
+      console.error('Error clearing cart in DELETE:', clearError);
+      return NextResponse.json(
+        { success: false, message: 'Failed to clear cart' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

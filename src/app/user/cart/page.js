@@ -111,31 +111,50 @@ export default function CartPage() {
     localStorage.setItem('cartSettings', JSON.stringify(settings));
   };
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
       toast.error('Please enter a coupon code');
+      return;
+    }
+
+    if (cartItems.length === 0) {
+      toast.error('Your cart is empty');
       return;
     }
 
     try {
       setIsApplyingCoupon(true);
       
-      // Simple coupon validation (you can enhance this)
-      const validCoupons = {
-        'SAVE10': 0.10,
-        'WELCOME20': 0.20,
-        'STUDENT15': 0.15
-      };
+      // Get restaurant ID from cart items (assuming all items are from same restaurant)
+      const restaurantId = cartItems[0]?.restaurant?._id || cartItems[0]?.restaurantId;
+      if (!restaurantId) {
+        toast.error('Restaurant information not found');
+        return;
+      }
+
+      const subtotal = getCartTotal(cartItems);
       
-      const discountRate = validCoupons[couponCode.toUpperCase()];
-      if (discountRate) {
-        const subtotal = getCartTotal(cartItems);
-        const discountAmount = subtotal * discountRate;
-        setDiscount(discountAmount);
+      const response = await fetch('/api/discounts/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: couponCode,
+          restaurantId: restaurantId,
+          orderAmount: subtotal,
+          items: cartItems
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setDiscount(data.discount.discountAmount);
         saveCartSettings();
-        toast.success(`Coupon applied! ${(discountRate * 100)}% discount`);
+        toast.success(`Coupon applied! $${data.discount.discountAmount.toFixed(2)} discount`);
       } else {
-        toast.error('Invalid coupon code');
+        toast.error(data.message || 'Invalid coupon code');
       }
     } catch (error) {
       console.error('Error applying coupon:', error);

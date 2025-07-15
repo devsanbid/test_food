@@ -67,7 +67,7 @@ export async function getRestaurantById(id) {
       throw new Error('Authentication token not found');
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/user/restaurants/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/user/restaurants/${id}?includeMenu=true`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

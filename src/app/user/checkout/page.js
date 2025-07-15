@@ -33,12 +33,14 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState([]);
 
   const [orderItems, setOrderItems] = useState([]);
+  const [discount, setDiscount] = useState(0);
+  const [couponCode, setCouponCode] = useState('');
 
   const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const deliveryFee = 2.50;
   const tax = subtotal * 0.08;
   const serviceFee = subtotal * 0.05;
-  const total = subtotal + deliveryFee + tax + serviceFee;
+  const total = subtotal + deliveryFee + tax + serviceFee - discount;
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -76,6 +78,19 @@ export default function CheckoutPage() {
         return;
       }
       
+      // Load cart settings including discount
+      const cartSettings = localStorage.getItem('cartSettings');
+      if (cartSettings) {
+        try {
+          const settings = JSON.parse(cartSettings);
+          setDiscount(settings.discount || 0);
+          setCouponCode(settings.couponCode || '');
+          console.log('Cart settings loaded:', settings);
+        } catch (e) {
+          console.error('Error parsing cart settings:', e);
+        }
+      }
+      
       // Validate and fix cart items that might be missing the category field
       const validatedCartData = cartData.map(item => {
         if (!item.category) {
@@ -90,27 +105,52 @@ export default function CheckoutPage() {
         saveCartToStorage(validatedCartData);
       }
       
-      try {
-        const response = await fetch('/api/user/cart', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            action: 'sync-cart',
-            items: validatedCartData
-          })
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-          console.log('Cart synced to database successfully');
-        } else {
-          console.error('Failed to sync cart:', result.message);
+      if (validatedCartData.length > 0) {
+        try {
+          const response = await fetch('/api/user/cart', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              action: 'sync-cart',
+              items: validatedCartData
+            })
+          });
+          
+          const result = await response.json();
+          if (result.success) {
+            console.log('Cart synced to database successfully');
+          } else {
+            console.error('Failed to sync cart:', result.message);
+            if (result.message.includes('Failed to clear cart')) {
+              console.log('Retrying cart sync after delay...');
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              const retryResponse = await fetch('/api/user/cart', {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                  action: 'sync-cart',
+                  items: validatedCartData
+                })
+              });
+              
+              const retryResult = await retryResponse.json();
+              if (retryResult.success) {
+                console.log('Cart synced successfully on retry');
+              } else {
+                console.error('Cart sync failed on retry:', retryResult.message);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Cart sync error:', error);
         }
-      } catch (error) {
-        console.error('Cart sync error:', error);
       }
       
       setOrderItems(validatedCartData);
@@ -475,6 +515,12 @@ export default function CheckoutPage() {
                 <span>Subtotal</span>
                 <span>${subtotal.toFixed(2)}</span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-green-500">
+                  <span>Discount {couponCode && `(${couponCode})`}</span>
+                  <span>-${discount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Delivery Fee</span>
                 <span>${deliveryFee.toFixed(2)}</span>

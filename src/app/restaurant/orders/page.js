@@ -48,7 +48,7 @@ export default function OrderManagement() {
     { id: 'confirmed', name: 'Confirmed', color: 'blue' },
     { id: 'preparing', name: 'Preparing', color: 'orange' },
     { id: 'ready', name: 'Ready', color: 'green' },
-    { id: 'out_for_delivery', name: 'Out for Delivery', color: 'purple' },
+    { id: 'out-for-delivery', name: 'Out for Delivery', color: 'purple' },
     { id: 'delivered', name: 'Delivered', color: 'green' },
     { id: 'cancelled', name: 'Cancelled', color: 'red' }
   ];
@@ -235,11 +235,18 @@ export default function OrderManagement() {
     
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(order => 
-        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.customerPhone.includes(searchTerm)
-      );
+      filtered = filtered.filter(order => {
+        const orderId = order._id || order.id || '';
+        const customerName = order.customerName || 
+          (order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : '') || '';
+        const customerPhone = order.customerPhone || order.customer?.phone || '';
+        const orderNumber = order.orderNumber || '';
+        
+        return orderId.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+               customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               customerPhone.includes(searchTerm) ||
+               orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      });
     }
     
     // Filter by date
@@ -312,7 +319,7 @@ export default function OrderManagement() {
       case 'confirmed': return <CheckCircle className="h-4 w-4" />;
       case 'preparing': return <ChefHat className="h-4 w-4" />;
       case 'ready': return <Package className="h-4 w-4" />;
-      case 'out_for_delivery': return <Truck className="h-4 w-4" />;
+      case 'out-for-delivery': return <Truck className="h-4 w-4" />;
       case 'delivered': return <CheckCircle className="h-4 w-4" />;
       case 'cancelled': return <XCircle className="h-4 w-4" />;
       default: return <AlertCircle className="h-4 w-4" />;
@@ -320,8 +327,13 @@ export default function OrderManagement() {
   };
 
   const formatTime = (date) => {
+    if (!date) return 'Unknown';
+    
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return 'Invalid date';
+    
     const now = new Date();
-    const diffMs = now - date;
+    const diffMs = now - dateObj;
     const diffMins = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     
@@ -330,7 +342,7 @@ export default function OrderManagement() {
     } else if (diffHours < 24) {
       return `${diffHours} hours ago`;
     } else {
-      return date.toLocaleDateString();
+      return dateObj.toLocaleDateString();
     }
   };
 
@@ -457,12 +469,12 @@ export default function OrderManagement() {
           <div className="lg:w-3/4">
             <div className="space-y-4">
               {filteredOrders.map(order => (
-                <div key={order.id} className="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 hover:border-gray-600 transition-colors">
+                <div key={order._id || order.id || order.orderNumber} className="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 hover:border-gray-600 transition-colors">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center space-x-4">
                       <div>
                         <h3 className="text-lg font-semibold">#{order.orderNumber || order.id}</h3>
-                        <p className="text-gray-400 text-sm">{order.user ? `${order.user.firstName} ${order.user.lastName}` : order.customerName}</p>
+                        <p className="text-gray-400 text-sm">{order.customer ? `${order.customer.firstName} ${order.customer.lastName}` : order.customerName}</p>
                       </div>
                       <div className={`px-3 py-1 rounded-full text-sm flex items-center space-x-1 ${getStatusColor(order.status)}`}>
                         {getStatusIcon(order.status)}
@@ -471,15 +483,15 @@ export default function OrderManagement() {
                     </div>
                     
                     <div className="text-right">
-                      <p className="text-xl font-bold text-green-400">${(order.totalAmount || order.total)?.toFixed(2)}</p>
-                      <p className="text-gray-400 text-sm">{formatTime(order.createdAt || order.orderTime)}</p>
+                      <p className="text-gray-400 text-sm font-medium">{formatTime(order.createdAt || order.orderTime)}</p>
+                      <p className="text-xs text-gray-500">{order.orderType === 'pickup' ? '🏪 Pickup' : '🚚 Delivery'}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div className="flex items-center space-x-2 text-sm text-gray-400">
                       <User className="h-4 w-4" />
-                      <span>{order.user?.phone || order.customerPhone}</span>
+                      <span>{order.customer?.phone || order.customerPhone}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-400">
                       <MapPin className="h-4 w-4" />
@@ -495,18 +507,47 @@ export default function OrderManagement() {
                     </div>
                   </div>
                   
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-400 mb-2">Items ({order.items.length}):</p>
-                    <div className="space-y-1">
+                  <div className="mb-6">
+                    <p className="text-sm text-gray-400 mb-3 font-medium">Items ({order.items.length}):</p>
+                    <div className="space-y-3">
                       {order.items.slice(0, 2).map((item, index) => (
-                        <div key={index} className="flex justify-between items-center text-sm">
-                          <span>{item.quantity}x {item.name}</span>
-                          <span className="text-gray-400">${(item.quantity * item.price).toFixed(2)}</span>
+                        <div key={item._id || item.id || `${item.name}-${index}`} className="flex items-center space-x-3 p-3 bg-gray-700/30 rounded-xl border border-gray-600/50">
+                          <div className="w-12 h-12 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-lg flex items-center justify-center border border-orange-500/30">
+                            <img 
+                              src={item.image || item.menuItem?.image || '/images/default-food.svg'} 
+                              alt={item.name || item.menuItem?.name}
+                              className="w-8 h-8 object-cover rounded"
+                              onError={(e) => {
+                                e.target.src = '/images/default-food.svg';
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium text-white">{item.quantity}x {item.name || item.menuItem?.name}</p>
+                                <p className="text-xs text-gray-400">${(item.price || item.menuItem?.price || 0).toFixed(2)} each</p>
+                              </div>
+                              <span className="text-green-400 font-semibold">${(item.quantity * (item.price || item.menuItem?.price || 0)).toFixed(2)}</span>
+                            </div>
+                          </div>
                         </div>
                       ))}
                       {order.items.length > 2 && (
-                        <p className="text-xs text-gray-500">+{order.items.length - 2} more items</p>
+                        <div className="text-center py-2">
+                          <p className="text-xs text-gray-500 bg-gray-700/20 rounded-lg py-2 px-3 border border-gray-600/30">+{order.items.length - 2} more items - View details to see all</p>
+                        </div>
                       )}
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-gray-600/50">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400 font-medium">Order Total:</span>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-green-400">${(order.totalAmount || order.pricing?.total || order.total || 0).toFixed(2)}</p>
+                          <p className="text-xs text-gray-500">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
@@ -579,7 +620,7 @@ export default function OrderManagement() {
                             <span>Out for Delivery</span>
                           </button>
                         )}
-                        {order.status === 'out_for_delivery' && (
+                        {order.status === 'out-for-delivery' && (
                           <button
                             onClick={() => updateOrderStatus(order._id || order.id, 'deliver')}
                             disabled={updating}
@@ -627,11 +668,11 @@ export default function OrderManagement() {
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center space-x-2">
                       <User className="h-4 w-4 text-gray-400" />
-                      <span>{selectedOrder.user ? `${selectedOrder.user.firstName} ${selectedOrder.user.lastName}` : selectedOrder.customerName}</span>
+                      <span>{selectedOrder.customer ? `${selectedOrder.customer.firstName} ${selectedOrder.customer.lastName}` : selectedOrder.customerName}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Phone className="h-4 w-4 text-gray-400" />
-                      <span>{selectedOrder.user?.phone || selectedOrder.customerPhone}</span>
+                      <span>{selectedOrder.customer?.phone || selectedOrder.customerPhone}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <MapPin className="h-4 w-4 text-gray-400" />
@@ -653,7 +694,7 @@ export default function OrderManagement() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Order Time:</span>
-                      <span>{(selectedOrder.createdAt || selectedOrder.orderTime).toLocaleTimeString()}</span>
+                      <span>{new Date(selectedOrder.createdAt || selectedOrder.orderTime).toLocaleTimeString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Status:</span>
@@ -666,23 +707,39 @@ export default function OrderManagement() {
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold mb-3">Order Items</h3>
-                <div className="space-y-3">
+                <h3 className="text-lg font-semibold mb-4">Order Items</h3>
+                <div className="space-y-4">
                   {(selectedOrder.items || []).map((item, index) => (
-                    <div key={index} className="flex justify-between items-start p-3 bg-gray-700/50 rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-medium">{item.menuItem?.name || item.name}</span>
-                          <span className="text-green-400 font-semibold">
-                            ${(item.quantity * (item.price || item.menuItem?.price || 0)).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm text-gray-400">
-                          <span>Quantity: {item.quantity}</span>
-                          <span>${(item.price || item.menuItem?.price || 0).toFixed(2)} each</span>
+                    <div key={item._id || item.id || `${item.name}-${index}`} className="flex items-start space-x-4 p-4 bg-gray-700/50 rounded-xl border border-gray-600/50 hover:bg-gray-700/70 transition-colors">
+                      <div className="w-16 h-16 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-xl flex items-center justify-center border border-orange-500/30 flex-shrink-0">
+                        <img 
+                          src={item.image || item.menuItem?.image || '/images/default-food.svg'} 
+                          alt={item.name || item.menuItem?.name}
+                          className="w-12 h-12 object-cover rounded-lg"
+                          onError={(e) => {
+                            e.target.src = '/images/default-food.svg';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-white text-lg truncate">{item.menuItem?.name || item.name}</h4>
+                            <div className="flex items-center space-x-4 mt-1">
+                              <span className="text-sm text-gray-400">Qty: {item.quantity}</span>
+                              <span className="text-sm text-gray-400">${(item.price || item.menuItem?.price || 0).toFixed(2)} each</span>
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <span className="text-xl font-bold text-green-400">
+                              ${(item.quantity * (item.price || item.menuItem?.price || 0)).toFixed(2)}
+                            </span>
+                          </div>
                         </div>
                         {(item.notes || item.specialInstructions) && (
-                          <p className="text-xs text-yellow-400 mt-1">Note: {item.notes || item.specialInstructions}</p>
+                          <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                            <p className="text-xs text-yellow-400">📝 {item.notes || item.specialInstructions}</p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -691,26 +748,31 @@ export default function OrderManagement() {
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold mb-3">Order Summary</h3>
-                <div className="bg-gray-700/50 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>${(selectedOrder.subtotal || selectedOrder.totalAmount - (selectedOrder.deliveryFee || 0) - (selectedOrder.tax || 0)).toFixed(2)}</span>
-                  </div>
-                  {(selectedOrder.deliveryFee || 0) > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span>Delivery Fee:</span>
-                      <span>${(selectedOrder.deliveryFee || 0).toFixed(2)}</span>
+                <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
+                <div className="bg-gradient-to-br from-gray-700/50 to-gray-800/50 rounded-xl p-6 border border-gray-600/50">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-300">Subtotal:</span>
+                      <span className="font-medium">${(selectedOrder.subtotal || selectedOrder.totalAmount - (selectedOrder.deliveryFee || 0) - (selectedOrder.tax || 0)).toFixed(2)}</span>
                     </div>
-                  )}
-                  <div className="flex justify-between text-sm">
-                    <span>Tax:</span>
-                    <span>${(selectedOrder.tax || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="border-t border-gray-600 pt-2">
-                    <div className="flex justify-between font-semibold text-lg">
-                      <span>Total:</span>
-                      <span className="text-green-400">${(selectedOrder.totalAmount || selectedOrder.total).toFixed(2)}</span>
+                    {(selectedOrder.deliveryFee || 0) > 0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-300">Delivery Fee:</span>
+                        <span className="font-medium">${(selectedOrder.deliveryFee || 0).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-300">Tax:</span>
+                      <span className="font-medium">${(selectedOrder.tax || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-gray-600/70 pt-3 mt-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-white">Total Amount:</span>
+                        <div className="text-right">
+                          <span className="text-2xl font-bold text-green-400">${(selectedOrder.totalAmount || selectedOrder.pricing?.total || selectedOrder.total || 0).toFixed(2)}</span>
+                          <p className="text-xs text-gray-400 mt-1">{selectedOrder.paymentMethod}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

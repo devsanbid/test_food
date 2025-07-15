@@ -1,112 +1,94 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Check, Clock, Truck, ChefHat, Star, Gift, AlertCircle, X, MarkAsRead } from 'lucide-react';
+import { Bell, Check, Clock, Truck, ChefHat, Star, Gift, AlertCircle, X, MarkAsRead, Package, MapPin, AlertTriangle } from 'lucide-react';
 import { getCurrentUser } from '@/actions/authActions';
+
+// Icon mapping for notification types
+const getNotificationIcon = (type) => {
+  const iconMap = {
+    'order-confirmed': Package,
+    'order-preparing': ChefHat,
+    'order-ready': Clock,
+    'order-out-for-delivery': Truck,
+    'order-delivered': Check,
+    'order-cancelled': X,
+    'order-time-updated': Clock,
+    'promotion': Gift,
+    'rating_request': Star,
+    'new_restaurant': MapPin,
+    'loyalty_points': Gift,
+    'order_delayed': AlertTriangle,
+    'security-alert': AlertTriangle,
+    'system': Bell
+  };
+  return iconMap[type] || Bell;
+};
+
+// Color mapping for notification types
+const getNotificationColor = (type) => {
+  const colorMap = {
+    'order-confirmed': { color: 'text-green-500', bgColor: 'bg-green-500/20' },
+    'order-preparing': { color: 'text-blue-500', bgColor: 'bg-blue-500/20' },
+    'order-ready': { color: 'text-orange-500', bgColor: 'bg-orange-500/20' },
+    'order-out-for-delivery': { color: 'text-purple-500', bgColor: 'bg-purple-500/20' },
+    'order-delivered': { color: 'text-green-500', bgColor: 'bg-green-500/20' },
+    'order-cancelled': { color: 'text-red-500', bgColor: 'bg-red-500/20' },
+    'order-time-updated': { color: 'text-yellow-500', bgColor: 'bg-yellow-500/20' },
+    'promotion': { color: 'text-purple-500', bgColor: 'bg-purple-500/20' },
+    'rating_request': { color: 'text-yellow-500', bgColor: 'bg-yellow-500/20' },
+    'new_restaurant': { color: 'text-blue-500', bgColor: 'bg-blue-500/20' },
+    'loyalty_points': { color: 'text-blue-500', bgColor: 'bg-blue-500/20' },
+    'order_delayed': { color: 'text-yellow-500', bgColor: 'bg-yellow-500/20' },
+    'security-alert': { color: 'text-red-500', bgColor: 'bg-red-500/20' },
+    'system': { color: 'text-gray-500', bgColor: 'bg-gray-500/20' }
+  };
+  return colorMap[type] || { color: 'text-gray-500', bgColor: 'bg-gray-500/20' };
+};
 
 export default function NotificationsPage() {
   const [user, setUser] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [stats, setStats] = useState(null);
+  const [pagination, setPagination] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const router = useRouter();
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'order_confirmed',
-      title: 'Order Confirmed',
-      message: 'Your order #34562 has been confirmed and is being prepared.',
-      timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-      isRead: false,
-      icon: Check,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
-      orderId: '34562'
-    },
-    {
-      id: 2,
-      type: 'order_preparing',
-      title: 'Order Being Prepared',
-      message: 'Your delicious meal is being prepared by Ocean Delights.',
-      timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
-      isRead: false,
-      icon: ChefHat,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
-      orderId: '34562'
-    },
-    {
-      id: 3,
-      type: 'order_delivered',
-      title: 'Order Delivered',
-      message: 'Your order #34561 has been delivered successfully. Enjoy your meal!',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      isRead: true,
-      icon: Truck,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
-      orderId: '34561'
-    },
-    {
-      id: 4,
-      type: 'rating_request',
-      title: 'Rate Your Experience',
-      message: 'How was your meal from Italian Corner? Your feedback helps us improve.',
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
-      isRead: false,
-      icon: Star,
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-500/10',
-      orderId: '34560'
-    },
-    {
-      id: 5,
-      type: 'promotion',
-      title: 'Special Offer!',
-      message: 'Get 20% off on your next order. Use code SAVE20. Valid until tomorrow!',
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
-      isRead: true,
-      icon: Gift,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10',
-      couponCode: 'SAVE20'
-    },
-    {
-      id: 6,
-      type: 'order_delayed',
-      title: 'Order Delayed',
-      message: 'Your order #34559 is running 10 minutes late due to high demand. Sorry for the inconvenience.',
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-      isRead: true,
-      icon: AlertCircle,
-      color: 'text-red-500',
-      bgColor: 'bg-red-500/10',
-      orderId: '34559'
-    },
-    {
-      id: 7,
-      type: 'new_restaurant',
-      title: 'New Restaurant Added',
-      message: 'Spice House is now available in your area! Explore authentic Indian cuisine.',
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      isRead: true,
-      icon: ChefHat,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10'
-    },
-    {
-      id: 8,
-      type: 'loyalty_points',
-      title: 'Loyalty Points Earned',
-      message: 'You earned 50 loyalty points from your recent order. Total: 1,250 points.',
-      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-      isRead: true,
-      icon: Gift,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
-      points: 50
+  // Fetch notifications from backend
+  const fetchNotifications = async (filters = {}) => {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      // Add filters
+      if (filters.type) queryParams.append('type', filters.type);
+      if (filters.isRead !== undefined) queryParams.append('isRead', filters.isRead);
+      if (filters.page) queryParams.append('page', filters.page);
+      if (filters.limit) queryParams.append('limit', filters.limit || 20);
+      
+      const response = await fetch(`/api/user/notifications?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setNotifications(data.data.notifications);
+          setStats(data.data.stats);
+          setPagination(data.data.pagination);
+          setUnreadCount(data.data.unreadCount);
+        }
+      } else {
+        console.error('Failed to fetch notifications');
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
     }
-  ]);
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -117,6 +99,8 @@ export default function NotificationsPage() {
           return;
         }
         setUser(userData);
+        // Fetch notifications after user is loaded
+        await fetchNotifications();
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/login');
@@ -127,22 +111,89 @@ export default function NotificationsPage() {
     checkAuth();
   }, [router]);
 
-  const markAsRead = (notificationId) => {
-    setNotifications(notifications.map(notification => 
-      notification.id === notificationId 
-        ? { ...notification, isRead: true }
-        : notification
-    ));
+  // Fetch notifications when filter changes
+  useEffect(() => {
+    if (user) {
+      const filters = {};
+      if (activeFilter === 'unread') {
+        filters.isRead = false;
+      } else if (activeFilter === 'orders') {
+        filters.type = 'order-confirmed,order-preparing,order-ready,order-out-for-delivery,order-delivered,order-cancelled,order-time-updated';
+      } else if (activeFilter === 'promotions') {
+        filters.type = 'promotion,loyalty_points';
+      }
+      fetchNotifications(filters);
+    }
+  }, [activeFilter, user]);
+
+  const markAsRead = async (notificationId) => {
+    try {
+      const response = await fetch('/api/user/notifications', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'mark-read',
+          notificationIds: [notificationId]
+        })
+      });
+      
+      if (response.ok) {
+        setNotifications(notifications.map(notification => 
+          notification._id === notificationId 
+            ? { ...notification, isRead: true }
+            : notification
+        ));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(notification => 
-      ({ ...notification, isRead: true })
-    ));
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch('/api/user/notifications', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'mark-all-read'
+        })
+      });
+      
+      if (response.ok) {
+        setNotifications(notifications.map(notification => 
+          ({ ...notification, isRead: true })
+        ));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
   };
 
-  const deleteNotification = (notificationId) => {
-    setNotifications(notifications.filter(notification => notification.id !== notificationId));
+  const deleteNotification = async (notificationId) => {
+    try {
+      const response = await fetch(`/api/user/notifications?ids=${notificationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const deletedNotification = notifications.find(n => n._id === notificationId);
+        setNotifications(notifications.filter(notification => notification._id !== notificationId));
+        if (deletedNotification && !deletedNotification.isRead) {
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
   };
 
   const getTimeAgo = (timestamp) => {
@@ -161,22 +212,27 @@ export default function NotificationsPage() {
     }
   };
 
-  const filteredNotifications = notifications.filter(notification => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'unread') return !notification.isRead;
-    if (activeFilter === 'orders') return ['order_confirmed', 'order_preparing', 'order_delivered', 'order_delayed'].includes(notification.type);
-    if (activeFilter === 'promotions') return ['promotion', 'loyalty_points'].includes(notification.type);
-    return true;
-  });
+  const filteredNotifications = notifications;
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  // Get notification icon and colors dynamically
+  const getNotificationDisplay = (notification) => {
+    const IconComponent = getNotificationIcon(notification.type);
+    const colors = getNotificationColor(notification.type);
+    return {
+      icon: IconComponent,
+      ...colors
+    };
+  };
 
   const handleNotificationAction = (notification) => {
     switch (notification.type) {
-      case 'order_confirmed':
-      case 'order_preparing':
-      case 'order_delivered':
-      case 'order_delayed':
+      case 'order-confirmed':
+      case 'order-preparing':
+      case 'order-ready':
+      case 'order-out-for-delivery':
+      case 'order-delivered':
+      case 'order-cancelled':
+      case 'order-time-updated':
         router.push('/user/orderhistory');
         break;
       case 'rating_request':
@@ -192,7 +248,7 @@ export default function NotificationsPage() {
       default:
         break;
     }
-    markAsRead(notification.id);
+    markAsRead(notification._id);
   };
 
   if (loading) {
@@ -228,10 +284,24 @@ export default function NotificationsPage() {
 
         <div className="flex space-x-1 mb-6 bg-gray-800 p-1 rounded-lg w-fit">
           {[
-            { key: 'all', label: 'All', count: notifications.length },
+            { key: 'all', label: 'All', count: stats?.totalNotifications || 0 },
             { key: 'unread', label: 'Unread', count: unreadCount },
-            { key: 'orders', label: 'Orders', count: notifications.filter(n => ['order_confirmed', 'order_preparing', 'order_delivered', 'order_delayed'].includes(n.type)).length },
-            { key: 'promotions', label: 'Promotions', count: notifications.filter(n => ['promotion', 'loyalty_points'].includes(n.type)).length }
+            { 
+              key: 'orders', 
+              label: 'Orders', 
+              count: (stats?.typeCounts?.['order-confirmed'] || 0) + 
+                     (stats?.typeCounts?.['order-preparing'] || 0) + 
+                     (stats?.typeCounts?.['order-ready'] || 0) + 
+                     (stats?.typeCounts?.['order-out-for-delivery'] || 0) + 
+                     (stats?.typeCounts?.['order-delivered'] || 0) + 
+                     (stats?.typeCounts?.['order-cancelled'] || 0) + 
+                     (stats?.typeCounts?.['order-time-updated'] || 0)
+            },
+            { 
+              key: 'promotions', 
+              label: 'Promotions', 
+              count: (stats?.typeCounts?.promotion || 0) + (stats?.typeCounts?.loyalty_points || 0)
+            }
           ].map(filter => (
             <button 
               key={filter.key}
@@ -256,18 +326,19 @@ export default function NotificationsPage() {
         ) : (
           <div className="space-y-4">
             {filteredNotifications.map((notification) => {
-              const IconComponent = notification.icon;
+              const display = getNotificationDisplay(notification);
+              const IconComponent = display.icon;
               return (
                 <div 
-                  key={notification.id}
+                  key={notification._id}
                   className={`bg-gray-800 rounded-lg p-4 border-l-4 transition-all duration-300 hover:bg-gray-750 cursor-pointer ${
                     notification.isRead ? 'border-gray-600' : 'border-orange-500'
                   }`}
                   onClick={() => handleNotificationAction(notification)}
                 >
                   <div className="flex items-start space-x-4">
-                    <div className={`p-2 rounded-lg ${notification.bgColor}`}>
-                      <IconComponent className={`w-5 h-5 ${notification.color}`} />
+                    <div className={`p-2 rounded-lg ${display.bgColor}`}>
+                      <IconComponent className={`w-5 h-5 ${display.color}`} />
                     </div>
                     
                     <div className="flex-1 min-w-0">
@@ -280,26 +351,34 @@ export default function NotificationsPage() {
                             {notification.message}
                           </p>
                           
-                          {notification.orderId && (
+                          {notification.relatedData?.order && (
                             <div className="mt-2">
                               <span className="inline-block bg-gray-700 px-2 py-1 rounded text-xs text-gray-300">
-                                Order #{notification.orderId}
+                                Order #{notification.relatedData.order.orderNumber || notification.relatedData.order._id}
                               </span>
                             </div>
                           )}
                           
-                          {notification.couponCode && (
+                          {notification.data?.couponCode && (
                             <div className="mt-2">
                               <span className="inline-block bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs font-mono">
-                                {notification.couponCode}
+                                {notification.data.couponCode}
                               </span>
                             </div>
                           )}
                           
-                          {notification.points && (
+                          {notification.data?.points && (
                             <div className="mt-2">
                               <span className="inline-block bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs">
-                                +{notification.points} points
+                                +{notification.data.points} points
+                              </span>
+                            </div>
+                          )}
+                          
+                          {notification.relatedData?.restaurant && (
+                            <div className="mt-2">
+                              <span className="inline-block bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs">
+                                {notification.relatedData.restaurant.name}
                               </span>
                             </div>
                           )}
@@ -307,14 +386,14 @@ export default function NotificationsPage() {
                         
                         <div className="flex items-center space-x-2 ml-4">
                           <span className="text-xs text-gray-500">
-                            {getTimeAgo(notification.timestamp)}
+                            {getTimeAgo(new Date(notification.createdAt))}
                           </span>
                           
                           {!notification.isRead && (
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                markAsRead(notification.id);
+                                markAsRead(notification._id);
                               }}
                               className="p-1 hover:bg-gray-700 rounded transition-colors"
                               title="Mark as read"
@@ -326,7 +405,7 @@ export default function NotificationsPage() {
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteNotification(notification.id);
+                              deleteNotification(notification._id);
                             }}
                             className="p-1 hover:bg-gray-700 rounded transition-colors"
                             title="Delete notification"
@@ -347,13 +426,36 @@ export default function NotificationsPage() {
           </div>
         )}
 
-        {filteredNotifications.length > 0 && (
-          <div className="mt-8 text-center">
-            <p className="text-gray-400 text-sm">
-              Showing {filteredNotifications.length} of {notifications.length} notifications
-            </p>
-          </div>
-        )}
+        {filteredNotifications.length > 0 && pagination && (
+           <div className="mt-8 text-center">
+             <p className="text-gray-400 text-sm">
+               Showing {filteredNotifications.length} of {pagination.totalNotifications} notifications
+             </p>
+             {pagination.totalPages > 1 && (
+               <div className="flex justify-center space-x-2 mt-4">
+                 {pagination.hasPrevPage && (
+                   <button 
+                     onClick={() => fetchNotifications({ page: pagination.currentPage - 1 })}
+                     className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+                   >
+                     Previous
+                   </button>
+                 )}
+                 <span className="px-3 py-1 text-sm">
+                   Page {pagination.currentPage} of {pagination.totalPages}
+                 </span>
+                 {pagination.hasNextPage && (
+                   <button 
+                     onClick={() => fetchNotifications({ page: pagination.currentPage + 1 })}
+                     className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+                   >
+                     Next
+                   </button>
+                 )}
+               </div>
+             )}
+           </div>
+         )}
       </div>
     </div>
   );

@@ -61,7 +61,7 @@ export default function RestaurantHeader() {
               </div>
               <div className="hidden sm:block text-left">
                 <div className="text-sm font-medium text-white">
-                  {user?.restaurantName || 'Restaurant Owner'}
+                  {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.restaurantName || 'Restaurant Owner'}
                 </div>
                 <div className="text-xs text-gray-400">
                   {user?.email || 'owner@restaurant.com'}

@@ -127,6 +127,14 @@ const restaurantSchema = new mongoose.Schema({
     type: String,
     default: '/images/default-restaurant.jpg'
   },
+  profileImage: {
+    type: String,
+    default: '/images/default-restaurant.jpg'
+  },
+  bannerImage: {
+    type: String,
+    default: '/default-restaurant-banner.jpg'
+  },
   rating: {
     average: {
       type: Number,
