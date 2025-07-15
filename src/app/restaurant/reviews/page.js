@@ -123,7 +123,10 @@ export default function RestaurantReviews() {
       }
 
       const data = await response.json();
+      console.log('Review stats API response:', data);
+      
       if (data.success && data.stats) {
+        console.log('Rating distribution data:', data.stats.ratingDistribution);
         setReviewStats({
           averageRating: data.stats.averageRating || 0,
           totalReviews: data.stats.total || 0,
@@ -132,6 +135,8 @@ export default function RestaurantReviews() {
           responseRate: parseFloat(data.stats.responseRate) || 0,
           averageResponseTime: 4.2 // This would need to be calculated separately
         });
+      } else {
+        console.log('No stats data received or request failed');
       }
     } catch (error) {
       console.error('Error fetching review stats:', error);
@@ -446,29 +451,43 @@ export default function RestaurantReviews() {
         {/* Rating Distribution */}
         <div className="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 mb-8">
           <h3 className="text-xl font-semibold mb-6">Rating Distribution</h3>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {[5, 4, 3, 2, 1].map(rating => {
               const count = reviewStats.ratingDistribution[rating] || 0;
               const percentage = reviewStats.totalReviews > 0 ? (count / reviewStats.totalReviews) * 100 : 0;
               
               return (
-                <div key={rating} className="flex items-center space-x-4">
+                <div key={rating} className="flex items-center space-x-4 group hover:bg-gray-700/20 rounded-lg p-2 -m-2 transition-colors duration-200">
                   <div className="flex items-center space-x-2 w-20">
-                    <span className="text-sm">{rating}</span>
-                    <Star className="h-4 w-4 text-yellow-400" />
+                    <span className="text-sm font-medium text-white">{rating}</span>
+                    <Star className="h-4 w-4 text-yellow-400 fill-current" />
                   </div>
-                  <div className="flex-1 bg-gray-700 rounded-full h-2">
+                  <div className="flex-1 bg-gray-700/50 rounded-full h-3 overflow-hidden relative">
                     <div 
-                      className="bg-yellow-400 h-2 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-yellow-400 to-yellow-500 h-full rounded-full transition-all duration-500 ease-out shadow-sm relative"
                       style={{ width: `${percentage}%` }}
-                    ></div>
+                    >
+                      {percentage > 0 && (
+                        <div className="absolute inset-0 bg-white/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                      )}
+                    </div>
+                    {percentage === 0 && (
+                      <div className="absolute inset-0 bg-gray-600/30 rounded-full"></div>
+                    )}
                   </div>
-                  <span className="text-sm text-gray-400 w-12">{count}</span>
-                  <span className="text-sm text-gray-400 w-12">{percentage.toFixed(0)}%</span>
+                  <span className="text-sm text-gray-300 w-12 font-medium">{count}</span>
+                  <span className="text-sm text-gray-400 w-16 text-right font-mono">{percentage.toFixed(1)}%</span>
                 </div>
               );
             })}
           </div>
+          {reviewStats.totalReviews === 0 && (
+            <div className="text-center py-8">
+              <Star className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+              <p className="text-gray-400">No reviews yet</p>
+              <p className="text-gray-500 text-sm">Rating distribution will appear once you receive reviews</p>
+            </div>
+          )}
         </div>
 
         {/* Tab Navigation */}

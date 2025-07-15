@@ -16,6 +16,16 @@ export default function RestaurantProfilePage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [cart, setCart] = useState([]);
   const [activeTab, setActiveTab] = useState('menu');
+  const [reviews, setReviews] = useState([]);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewFormData, setReviewFormData] = useState({
+    orderId: '',
+    rating: { food: 5, service: 5, overall: 5 },
+    comment: '',
+    images: [],
+    tags: []
+  });
+  const [userOrders, setUserOrders] = useState([]);
   const [restaurant, setRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [loadingRestaurant, setLoadingRestaurant] = useState(true);
@@ -27,16 +37,76 @@ export default function RestaurantProfilePage() {
     try {
       setLoadingRestaurant(true);
       const data = await getRestaurantById(restaurantId);
-      console.log("data: ", data)
+      console.log("Full API response: ", data);
+      console.log("Reviews data structure: ", data.reviews);
+      console.log("Reviews array: ", data.reviews?.reviews);
 
       setRestaurant(data.restaurant);
       setMenuItems(data.restaurant.menu || []);
+      setReviews(data.reviews?.reviews || []);
+      
+      console.log("Reviews state after setting: ", data.reviews?.reviews || []);
 
     } catch (error) {
       console.error('Failed to fetch restaurant data:', error);
       router.push('/user/restaurants');
     } finally {
       setLoadingRestaurant(false);
+    }
+  };
+
+  const fetchUserOrders = async () => {
+    try {
+      const response = await fetch(`/api/user/orders?restaurant=${restaurantId}&status=delivered`);
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setUserOrders(data.data.orders || []);
+      }
+    } catch (error) {
+      console.error('Error fetching user orders:', error);
+    }
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const response = await fetch(`/api/user/restaurants/${restaurantId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'add-review',
+          ...reviewFormData
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Refresh restaurant data to get updated reviews and rating
+        await fetchRestaurantData();
+        
+        // Reset form and close modal
+        setReviewFormData({
+          orderId: '',
+          rating: { food: 5, service: 5, overall: 5 },
+          comment: '',
+          images: [],
+          tags: []
+        });
+        setShowReviewForm(false);
+        
+        toast.success('Review submitted successfully!');
+      } else {
+        toast.error(data.message || 'Failed to submit review');
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      toast.error('Failed to submit review. Please try again.');
     }
   };
 
@@ -59,6 +129,7 @@ export default function RestaurantProfilePage() {
         }
         setUser(userData);
         await fetchRestaurantData();
+        await fetchUserOrders();
       } catch (error) {
         console.error('Failed to fetch data:', error);
         router.push('/login');
@@ -238,8 +309,228 @@ export default function RestaurantProfilePage() {
           >
             Restaurant Info
           </button>
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`pb-4 px-2 font-medium transition-colors duration-200 ${
+              activeTab === 'reviews'
+                ? 'text-orange-400 border-b-2 border-orange-400'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Reviews
+          </button>
         </div>
         
+        {activeTab === 'reviews' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Reviews & Ratings</h2>
+              <button
+                onClick={() => setShowReviewForm(true)}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+              >
+                Write a Review
+              </button>
+            </div>
+            
+            {/* Review Form Modal */}
+            {showReviewForm && (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-white">Write a Review</h3>
+                    <button
+                      onClick={() => setShowReviewForm(false)}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  
+                  <form onSubmit={handleReviewSubmit} className="space-y-6">
+                    {/* Order Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Select Order *
+                      </label>
+                      <select
+                        value={reviewFormData.orderId}
+                        onChange={(e) => setReviewFormData({...reviewFormData, orderId: e.target.value})}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        required
+                      >
+                        <option value="">Choose an order to review</option>
+                        {userOrders.map(order => (
+                          <option key={order._id} value={order._id}>
+                            Order #{order._id.slice(-6)} - {new Date(order.createdAt).toLocaleDateString()}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Rating Section */}
+                    <div className="space-y-4">
+                      <h4 className="text-lg font-semibold text-white">Rate Your Experience</h4>
+                      
+                      {/* Food Rating */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Food Quality</label>
+                        <div className="flex space-x-1">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setReviewFormData({
+                                ...reviewFormData,
+                                rating: {...reviewFormData.rating, food: star}
+                              })}
+                              className={`text-2xl transition-colors ${
+                                star <= reviewFormData.rating.food ? 'text-yellow-400' : 'text-gray-600'
+                              }`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Service Rating */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Service</label>
+                        <div className="flex space-x-1">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setReviewFormData({
+                                ...reviewFormData,
+                                rating: {...reviewFormData.rating, service: star}
+                              })}
+                              className={`text-2xl transition-colors ${
+                                star <= reviewFormData.rating.service ? 'text-yellow-400' : 'text-gray-600'
+                              }`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Overall Rating */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Overall Experience</label>
+                        <div className="flex space-x-1">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setReviewFormData({
+                                ...reviewFormData,
+                                rating: {...reviewFormData.rating, overall: star}
+                              })}
+                              className={`text-2xl transition-colors ${
+                                star <= reviewFormData.rating.overall ? 'text-yellow-400' : 'text-gray-600'
+                              }`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Comment */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Your Review *
+                      </label>
+                      <textarea
+                        value={reviewFormData.comment}
+                        onChange={(e) => setReviewFormData({...reviewFormData, comment: e.target.value})}
+                        placeholder="Share your experience with this restaurant..."
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-orange-500 h-32 resize-none"
+                        required
+                      />
+                    </div>
+                    
+                    {/* Submit Buttons */}
+                    <div className="flex space-x-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowReviewForm(false)}
+                        className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+                      >
+                        Submit Review
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+            
+            {/* Reviews List */}
+            <div className="space-y-6">
+              {reviews.length > 0 ? (
+                reviews.map(review => (
+                  <div key={review._id} className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-semibold">
+                          {(review.user?.firstName?.charAt(0) || review.user?.username?.charAt(0) || 'U')}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-white">
+                            {review.user?.firstName && review.user?.lastName 
+                              ? `${review.user.firstName} ${review.user.lastName}`
+                              : review.user?.username || 'Anonymous'
+                            }
+                          </h4>
+                          <p className="text-sm text-gray-400">{new Date(review.createdAt).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className="text-yellow-400">★</span>
+                        <span className="text-white font-semibold">{review.rating.overall}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <div className="flex space-x-4 text-sm">
+                        <span className="text-gray-300">Food: <span className="text-yellow-400">{'★'.repeat(review.rating.food)}</span></span>
+                        <span className="text-gray-300">Service: <span className="text-yellow-400">{'★'.repeat(review.rating.service)}</span></span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-gray-300 mb-4">{review.comment}</p>
+                    
+                    {review.tags && review.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {review.tags.map((tag, index) => (
+                          <span key={index} className="px-2 py-1 bg-gray-700/50 text-gray-300 rounded-full text-xs">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-gray-500 text-6xl mb-4">💬</div>
+                  <p className="text-gray-400 text-lg">No reviews yet</p>
+                  <p className="text-gray-500 text-sm mt-2">Be the first to share your experience!</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'menu' && (
           <div>
             <div className="flex items-center justify-between mb-8">

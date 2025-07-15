@@ -10,6 +10,7 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Notification type is required'],
     enum: [
+
       'order-confirmed',
       'order-preparing',
       'order-ready',
@@ -25,6 +26,7 @@ const notificationSchema = new mongoose.Schema({
       'discount-offer',
       'loyalty-reward',
       'review-reminder',
+      'review-response',
       'account-update',
       'security-alert',
       'system-maintenance',

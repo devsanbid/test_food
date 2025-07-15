@@ -122,7 +122,7 @@ export async function GET(request, { params }) {
       const reviews = await Review.find({
         restaurant: id,
         isHidden: false,
-        moderationStatus: 'approved'
+        moderationStatus: { $in: ['approved', 'pending'] }
       })
       .populate('user', 'firstName lastName username')
       .sort({ createdAt: -1 })
@@ -133,7 +133,7 @@ export async function GET(request, { params }) {
       const totalReviews = await Review.countDocuments({
         restaurant: id,
         isHidden: false,
-        moderationStatus: 'approved'
+        moderationStatus: { $in: ['approved', 'pending'] }
       });
 
       const reviewStats = await Review.getRestaurantAverageRating(id);
