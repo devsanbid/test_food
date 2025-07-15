@@ -58,10 +58,10 @@ export default function FavoritesPage() {
     checkAuth();
   }, [router]);
 
-  const removeFavoriteDish = async (dishId) => {
+  const removeFavoriteDish = async (dish) => {
     try {
-      await removeDishFromFavorites(dishId);
-      setFavoriteDishes(prev => prev.filter(dish => dish._id !== dishId));
+      await removeDishFromFavorites(dish.restaurantId, dish.menuItemId || dish._id);
+      setFavoriteDishes(prev => prev.filter(d => d._id !== dish._id));
       toast.success('Dish removed from favorites');
     } catch (error) {
       console.error('Failed to remove dish from favorites:', error);
@@ -206,7 +206,7 @@ export default function FavoritesPage() {
                         className="w-full h-48 object-cover"
                       />
                       <button 
-                        onClick={() => removeFavoriteDish(dish._id)}
+                        onClick={() => removeFavoriteDish(dish)}
                         className="absolute top-3 right-3 p-2 bg-red-500 hover:bg-red-600 rounded-full transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />

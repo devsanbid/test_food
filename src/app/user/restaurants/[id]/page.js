@@ -27,12 +27,10 @@ export default function RestaurantProfilePage() {
     try {
       setLoadingRestaurant(true);
       const data = await getRestaurantById(restaurantId);
-      console.log('Full restaurant data received:', data);
-      console.log('Menu data from API:', data.restaurant.menu);
-      console.log('Menu categories from API:', data.restaurant.menuCategories);
+
       setRestaurant(data.restaurant);
       setMenuItems(data.restaurant.menu || []);
-      console.log('MenuItems state after setting:', data.restaurant.menu || []);
+
     } catch (error) {
       console.error('Failed to fetch restaurant data:', error);
       router.push('/user/restaurants');
@@ -253,30 +251,41 @@ export default function RestaurantProfilePage() {
         
         {activeTab === 'menu' && (
           <div>
-            <div className="flex flex-wrap gap-3 mb-8">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`px-6 py-3 rounded-full font-medium transition-all duration-200 transform hover:scale-105 ${
-                    selectedCategory === category.id
-                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
-                      : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-700'
-                  }`}
-                >
-                  {category.name} ({category.count})
-                </button>
-              ))}
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex gap-8">
+                {categories.map((category, index) => (
+                  <button
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category.id)}
+                    className={`relative cursor-pointer transition-all duration-300 pb-2 ${
+                      selectedCategory === category.id
+                        ? 'text-orange-500 font-semibold'
+                        : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    {category.name} ({category.count})
+                    {selectedCategory === category.id && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500 rounded-full"></div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2">Choose Dishes</h2>
+              <p className="text-gray-400">
+                {filteredMenuItems.length > 0
+                  ? `Discover our ${filteredMenuItems.length} delicious menu items`
+                  : 'No menu items available'
+                }
+              </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredMenuItems.length === 0 ? (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-gray-400 text-lg">No menu items found for this category.</p>
-                </div>
-              ) : (
-                filteredMenuItems.map((item, index) => {
 
+            {filteredMenuItems.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredMenuItems.map((item, index) => {
                   const dishWithRestaurant = {
                     ...item,
                     _id: item._id || item.id,
@@ -296,11 +305,19 @@ export default function RestaurantProfilePage() {
                       key={item._id || item.id || `menu-item-${index}`}
                       dish={dishWithRestaurant}
                       onAddToCart={addToCartHandler}
+                      onRemoveFromCart={removeFromCartHandler}
                     />
                   );
                 })
-              )}
-            </div>
+              }
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-gray-500 text-6xl mb-4">🍽️</div>
+                <p className="text-gray-400 text-lg">No dishes found for the selected category</p>
+                <p className="text-gray-500 text-sm mt-2">Try selecting a different category or check back later</p>
+              </div>
+            )}
           </div>
         )}
         

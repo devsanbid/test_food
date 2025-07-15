@@ -155,7 +155,7 @@ export async function POST(request) {
       }
     }
 
-    const existingFavorite = await Favorite.findOne({
+    const existingActiveFavorite = await Favorite.findOne({
       userId: user.id,
       restaurantId,
       menuItemId: type === 'dish' ? menuItemId : null,
@@ -163,23 +163,41 @@ export async function POST(request) {
       isActive: true
     });
 
-    if (existingFavorite) {
+    if (existingActiveFavorite) {
       return NextResponse.json(
         { success: false, message: `${type === 'dish' ? 'Dish' : 'Restaurant'} is already in favorites` },
         { status: 400 }
       );
     }
 
-    const favoriteData = {
+    const existingInactiveFavorite = await Favorite.findOne({
       userId: user.id,
       restaurantId,
-      type,
       menuItemId: type === 'dish' ? menuItemId : null,
-      dishDetails: type === 'dish' ? dishDetails : null
-    };
+      type,
+      isActive: false
+    });
 
-    const newFavorite = new Favorite(favoriteData);
-    await newFavorite.save();
+    let newFavorite;
+    if (existingInactiveFavorite) {
+      existingInactiveFavorite.isActive = true;
+      existingInactiveFavorite.addedAt = new Date();
+      if (type === 'dish' && dishDetails) {
+        existingInactiveFavorite.dishDetails = dishDetails;
+      }
+      await existingInactiveFavorite.save();
+      newFavorite = existingInactiveFavorite;
+    } else {
+      const favoriteData = {
+        userId: user.id,
+        restaurantId,
+        type,
+        menuItemId: type === 'dish' ? menuItemId : null,
+        dishDetails: type === 'dish' ? dishDetails : null
+      };
+      newFavorite = new Favorite(favoriteData);
+      await newFavorite.save();
+    }
 
     return NextResponse.json({
       success: true,
@@ -191,6 +209,14 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('Add to favorites error:', error);
+    
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { success: false, message: 'Item is already in favorites' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }
@@ -243,7 +269,13 @@ export async function DELETE(request) {
       isActive: true
     };
 
-    if (type === 'dish' && menuItemId) {
+    if (type === 'dish') {
+      if (!menuItemId || menuItemId === 'undefined' || menuItemId === 'null') {
+        return NextResponse.json(
+          { success: false, message: 'Menu item ID is required for dish favorites' },
+          { status: 400 }
+        );
+      }
       query.menuItemId = menuItemId;
     }
 
