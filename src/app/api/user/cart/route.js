@@ -288,7 +288,7 @@ export async function PUT(request) {
         });
 
       case 'sync-cart':
-        const { items } = body;
+        const { items, discount: syncDiscount, couponCode: syncCouponCode } = body;
         if (!items || !Array.isArray(items)) {
           return NextResponse.json(
             { success: false, message: 'Items array is required for sync' },
@@ -338,6 +338,11 @@ export async function PUT(request) {
               isAvailable: true,
               preparationTime: item.preparationTime || 15
             });
+          }
+          
+          // Apply discount and coupon if provided
+          if (syncDiscount && syncDiscount > 0 && syncCouponCode) {
+            await cart.applyCoupon(syncCouponCode, syncDiscount);
           }
         }
 

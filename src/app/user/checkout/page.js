@@ -106,18 +106,20 @@ export default function CheckoutPage() {
       }
       
       if (validatedCartData.length > 0) {
-        try {
-          const response = await fetch('/api/user/cart', {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              action: 'sync-cart',
-              items: validatedCartData
-            })
-          });
+          try {
+            const response = await fetch('/api/user/cart', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                action: 'sync-cart',
+                items: validatedCartData,
+                discount: discount,
+                couponCode: couponCode
+              })
+            });
           
           const result = await response.json();
           if (result.success) {
@@ -136,7 +138,9 @@ export default function CheckoutPage() {
                 credentials: 'include',
                 body: JSON.stringify({
                   action: 'sync-cart',
-                  items: validatedCartData
+                  items: validatedCartData,
+                  discount: discount,
+                  couponCode: couponCode
                 })
               });
               

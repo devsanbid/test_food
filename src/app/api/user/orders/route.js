@@ -424,16 +424,22 @@ export async function POST(request) {
     // Clear the cart after successful order creation
     await cart.clearCart();
 
-    // Create order notification
-    await Notification.createOrderNotification(
-      user.id,
-      'order-confirmed',
-      {
-        orderId: order._id,
-        orderNumber: order.orderNumber,
-        restaurantName: restaurant.name
+    // Create order notification asynchronously to avoid blocking the response
+    setImmediate(async () => {
+      try {
+        await Notification.createOrderNotification(
+          user.id,
+          'order-confirmed',
+          {
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            restaurantName: restaurant.name
+          }
+        );
+      } catch (notificationError) {
+        console.error('Notification creation failed:', notificationError);
       }
-    );
+    });
 
     return NextResponse.json({
       success: true,

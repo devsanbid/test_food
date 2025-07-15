@@ -267,7 +267,7 @@ export async function PUT(request) {
     order.updatedAt = new Date();
     await order.save();
 
-    // Create notification using the sophisticated method from the model
+    // Create notification asynchronously to avoid blocking the response
     if (notificationMessage) {
       let notificationTypeForModel = 'order-update';
       
@@ -296,24 +296,27 @@ export async function PUT(request) {
           break;
       }
       
-      try {
-        await Notification.createOrderNotification(
-          order.customer._id,
-          notificationTypeForModel,
-          {
-            orderId: order._id,
-            orderNumber: order.orderNumber,
-            restaurantName: restaurant.name,
-            restaurantId: restaurant._id,
-            estimatedTime: action === 'update-preparation-time' ? updateData.estimatedTime : null,
-            deliveryPersonName: updateData.deliveryPersonName || null,
-            deliveryPersonPhone: updateData.deliveryPersonPhone || null,
-            cancellationReason: updateData.reason || null
-          }
-        );
-      } catch (notificationError) {
-        console.error('Notification creation failed:', notificationError);
-      }
+      // Create notification asynchronously without blocking the response
+      setImmediate(async () => {
+        try {
+          await Notification.createOrderNotification(
+            order.customer._id,
+            notificationTypeForModel,
+            {
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              restaurantName: restaurant.name,
+              restaurantId: restaurant._id,
+              estimatedTime: action === 'update-preparation-time' ? updateData.estimatedTime : null,
+              deliveryPersonName: updateData.deliveryPersonName || null,
+              deliveryPersonPhone: updateData.deliveryPersonPhone || null,
+              cancellationReason: updateData.reason || null
+            }
+          );
+        } catch (notificationError) {
+          console.error('Notification creation failed:', notificationError);
+        }
+      });
     }
 
     return NextResponse.json({

@@ -197,6 +197,7 @@ export async function GET(request) {
         'address.state': 1,
         'address.coordinates': 1,
         logo: 1,
+        bannerImage: 1,
         images: { $slice: ['$images', 3] }, // Only first 3 images
         'rating.average': 1,
         'rating.count': 1,

@@ -222,6 +222,8 @@ export default function OrderManagement() {
       ];
       setOrders(mockOrders);
       setFilteredOrders(mockOrders);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -282,8 +284,14 @@ export default function OrderManagement() {
        
        const data = await response.json();
        if (data.success) {
-         // Refresh orders after successful update
-         await fetchOrders();
+         // Update orders state directly instead of refetching to avoid loading screen
+         setOrders(prevOrders => 
+           prevOrders.map(order => 
+             (order._id || order.id) === orderId 
+               ? { ...order, status: data.order?.status || getNewStatus(action) }
+               : order
+           )
+         );
        } else {
          setError('Failed to update order: ' + data.message);
          console.error('Failed to update order:', data.message);
@@ -293,6 +301,18 @@ export default function OrderManagement() {
        console.error('Error updating order:', error);
      } finally {
        setUpdating(false);
+     }
+   };
+
+   const getNewStatus = (action) => {
+     switch (action) {
+       case 'confirm': return 'confirmed';
+       case 'start-preparing': return 'preparing';
+       case 'ready': return 'ready';
+       case 'out-for-delivery': return 'out-for-delivery';
+       case 'deliver': return 'delivered';
+       case 'cancel': return 'cancelled';
+       default: return 'pending';
      }
    };
 

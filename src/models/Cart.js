@@ -148,7 +148,6 @@ const cartSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-cartSchema.index({ user: 1 });
 cartSchema.index({ restaurant: 1 });
 cartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 cartSchema.index({ lastUpdated: 1 });
@@ -189,88 +188,205 @@ cartSchema.pre('save', function(next) {
 });
 
 // Method to add item to cart
-cartSchema.methods.addItem = function(itemData) {
-  // Check if cart is from different restaurant
-  if (this.restaurant && this.restaurant.toString() !== itemData.restaurant.toString()) {
-    throw new Error('Cannot add items from different restaurants. Please clear your cart first.');
-  }
+cartSchema.methods.addItem = async function(itemData) {
+  const maxRetries = 3;
+  let retries = 0;
   
-  // Set restaurant if this is the first item
-  if (!this.restaurant) {
-    this.restaurant = itemData.restaurant;
-    this.restaurantName = itemData.restaurantName;
-  }
-  
-  // Check if item with same customizations already exists
-  const existingItemIndex = this.items.findIndex(item => 
-    item.menuItem.toString() === itemData.menuItem.toString() &&
-    JSON.stringify(item.customizations) === JSON.stringify(itemData.customizations || []) &&
-    item.specialInstructions === (itemData.specialInstructions || '')
-  );
-  
-  if (existingItemIndex > -1) {
-    // Update quantity of existing item
-    const newQuantity = this.items[existingItemIndex].quantity + (itemData.quantity || 1);
-    if (newQuantity > 10) {
-      throw new Error('Maximum 10 items allowed per menu item');
+  while (retries < maxRetries) {
+    try {
+      const currentCart = await this.constructor.findById(this._id);
+      if (!currentCart) {
+        throw new Error('Cart not found');
+      }
+      
+      // Check if cart is from different restaurant
+      if (currentCart.restaurant && currentCart.restaurant.toString() !== itemData.restaurant.toString()) {
+        throw new Error('Cannot add items from different restaurants. Please clear your cart first.');
+      }
+      
+      const updateData = {};
+      
+      // Set restaurant if this is the first item
+      if (!currentCart.restaurant) {
+        updateData.restaurant = itemData.restaurant;
+        updateData.restaurantName = itemData.restaurantName;
+      }
+      
+      // Check if item with same customizations already exists
+      const existingItemIndex = currentCart.items.findIndex(item => 
+        item.menuItem.toString() === itemData.menuItem.toString() &&
+        JSON.stringify(item.customizations) === JSON.stringify(itemData.customizations || []) &&
+        item.specialInstructions === (itemData.specialInstructions || '')
+      );
+      
+      if (existingItemIndex > -1) {
+        // Update quantity of existing item
+        const newQuantity = currentCart.items[existingItemIndex].quantity + (itemData.quantity || 1);
+        if (newQuantity > 10) {
+          throw new Error('Maximum 10 items allowed per menu item');
+        }
+        updateData[`items.${existingItemIndex}.quantity`] = newQuantity;
+      } else {
+        // Add new item
+        const newItem = {
+          menuItem: itemData.menuItem,
+          restaurant: itemData.restaurant,
+          name: itemData.name,
+          description: itemData.description,
+          price: itemData.price,
+          quantity: itemData.quantity || 1,
+          image: itemData.image,
+          category: itemData.category,
+          customizations: itemData.customizations || [],
+          specialInstructions: itemData.specialInstructions || '',
+          isAvailable: itemData.isAvailable !== false,
+          preparationTime: itemData.preparationTime || 15
+        };
+        updateData.$push = { items: newItem };
+      }
+      
+      updateData.lastUpdated = new Date();
+      
+      const updatedCart = await this.constructor.findOneAndUpdate(
+        { _id: this._id, __v: currentCart.__v },
+        updateData,
+        { new: true, runValidators: true }
+      );
+      
+      if (updatedCart) {
+        Object.assign(this, updatedCart.toObject());
+        return this;
+      }
+      
+      throw new Error('Version conflict detected');
+    } catch (error) {
+      if ((error.message === 'Version conflict detected' || error.name === 'VersionError') && retries < maxRetries - 1) {
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 100 * retries));
+        continue;
+      }
+      throw error;
     }
-    this.items[existingItemIndex].quantity = newQuantity;
-  } else {
-    // Add new item
-    this.items.push({
-      menuItem: itemData.menuItem,
-      restaurant: itemData.restaurant,
-      name: itemData.name,
-      description: itemData.description,
-      price: itemData.price,
-      quantity: itemData.quantity || 1,
-      image: itemData.image,
-      category: itemData.category,
-      customizations: itemData.customizations || [],
-      specialInstructions: itemData.specialInstructions || '',
-      isAvailable: itemData.isAvailable !== false,
-      preparationTime: itemData.preparationTime || 15
-    });
   }
   
-  return this.save();
+  throw new Error('Failed to add item to cart after multiple retries');
 };
 
 // Method to update item quantity
-cartSchema.methods.updateItemQuantity = function(itemIndex, quantity) {
-  if (itemIndex < 0 || itemIndex >= this.items.length) {
-    throw new Error('Invalid item index');
+cartSchema.methods.updateItemQuantity = async function(itemIndex, quantity) {
+  const maxRetries = 3;
+  let retries = 0;
+  
+  while (retries < maxRetries) {
+    try {
+      const currentCart = await this.constructor.findById(this._id);
+      if (!currentCart) {
+        throw new Error('Cart not found');
+      }
+      
+      if (itemIndex < 0 || itemIndex >= currentCart.items.length) {
+        throw new Error('Invalid item index');
+      }
+      
+      if (quantity < 1) {
+        throw new Error('Quantity must be at least 1');
+      }
+      
+      if (quantity > 10) {
+        throw new Error('Maximum 10 items allowed per menu item');
+      }
+      
+      const updatedCart = await this.constructor.findOneAndUpdate(
+        { _id: this._id, __v: currentCart.__v },
+        {
+          $set: {
+            [`items.${itemIndex}.quantity`]: quantity,
+            lastUpdated: new Date()
+          }
+        },
+        { new: true, runValidators: true }
+      );
+      
+      if (updatedCart) {
+        Object.assign(this, updatedCart.toObject());
+        return this;
+      }
+      
+      throw new Error('Version conflict detected');
+    } catch (error) {
+      if ((error.message === 'Version conflict detected' || error.name === 'VersionError') && retries < maxRetries - 1) {
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 100 * retries));
+        continue;
+      }
+      throw error;
+    }
   }
   
-  if (quantity < 1) {
-    throw new Error('Quantity must be at least 1');
-  }
-  
-  if (quantity > 10) {
-    throw new Error('Maximum 10 items allowed per menu item');
-  }
-  
-  this.items[itemIndex].quantity = quantity;
-  return this.save();
+  throw new Error('Failed to update item quantity after multiple retries');
 };
 
 // Method to remove item from cart
-cartSchema.methods.removeItem = function(itemIndex) {
-  if (itemIndex < 0 || itemIndex >= this.items.length) {
-    throw new Error('Invalid item index');
+cartSchema.methods.removeItem = async function(itemIndex) {
+  const maxRetries = 3;
+  let retries = 0;
+  
+  while (retries < maxRetries) {
+    try {
+      const currentCart = await this.constructor.findById(this._id);
+      if (!currentCart) {
+        throw new Error('Cart not found');
+      }
+      
+      if (itemIndex < 0 || itemIndex >= currentCart.items.length) {
+        throw new Error('Invalid item index');
+      }
+      
+      const updateData = {
+        $unset: { [`items.${itemIndex}`]: 1 },
+        $set: { lastUpdated: new Date() }
+      };
+      
+      // Clear restaurant if this will be the last item
+      if (currentCart.items.length === 1) {
+        updateData.$set.restaurant = undefined;
+        updateData.$set.restaurantName = undefined;
+        updateData.$set.couponCode = undefined;
+        updateData.$set.discount = 0;
+      }
+      
+      let updatedCart = await this.constructor.findOneAndUpdate(
+        { _id: this._id, __v: currentCart.__v },
+        updateData,
+        { new: true, runValidators: true }
+      );
+      
+      if (updatedCart) {
+        // Remove null elements from items array
+        updatedCart = await this.constructor.findOneAndUpdate(
+          { _id: this._id },
+          { $pull: { items: null } },
+          { new: true, runValidators: true }
+        );
+        
+        if (updatedCart) {
+          Object.assign(this, updatedCart.toObject());
+          return this;
+        }
+      }
+      
+      throw new Error('Version conflict detected');
+    } catch (error) {
+      if ((error.message === 'Version conflict detected' || error.name === 'VersionError') && retries < maxRetries - 1) {
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 100 * retries));
+        continue;
+      }
+      throw error;
+    }
   }
   
-  this.items.splice(itemIndex, 1);
-  
-  // Clear restaurant if no items left
-  if (this.items.length === 0) {
-    this.restaurant = undefined;
-    this.restaurantName = undefined;
-    this.couponCode = undefined;
-    this.discount = 0;
-  }
-  
-  return this.save();
+  throw new Error('Failed to remove item from cart after multiple retries');
 };
 
 // Method to clear entire cart
@@ -321,17 +437,89 @@ cartSchema.methods.clearCart = async function() {
 };
 
 // Method to apply coupon
-cartSchema.methods.applyCoupon = function(couponCode, discountAmount) {
-  this.couponCode = couponCode;
-  this.discount = discountAmount;
-  return this.save();
+cartSchema.methods.applyCoupon = async function(couponCode, discountAmount) {
+  const maxRetries = 3;
+  let retries = 0;
+  
+  while (retries < maxRetries) {
+    try {
+      const currentCart = await this.constructor.findById(this._id);
+      if (!currentCart) {
+        throw new Error('Cart not found');
+      }
+      
+      const updatedCart = await this.constructor.findOneAndUpdate(
+        { _id: this._id, __v: currentCart.__v },
+        {
+          $set: {
+            couponCode: couponCode,
+            discount: discountAmount,
+            lastUpdated: new Date()
+          }
+        },
+        { new: true, runValidators: true }
+      );
+      
+      if (updatedCart) {
+        Object.assign(this, updatedCart.toObject());
+        return this;
+      }
+      
+      throw new Error('Version conflict detected');
+    } catch (error) {
+      if ((error.message === 'Version conflict detected' || error.name === 'VersionError') && retries < maxRetries - 1) {
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 100 * retries));
+        continue;
+      }
+      throw error;
+    }
+  }
+  
+  throw new Error('Failed to apply coupon after multiple retries');
 };
 
 // Method to remove coupon
-cartSchema.methods.removeCoupon = function() {
-  this.couponCode = undefined;
-  this.discount = 0;
-  return this.save();
+cartSchema.methods.removeCoupon = async function() {
+  const maxRetries = 3;
+  let retries = 0;
+  
+  while (retries < maxRetries) {
+    try {
+      const currentCart = await this.constructor.findById(this._id);
+      if (!currentCart) {
+        throw new Error('Cart not found');
+      }
+      
+      const updatedCart = await this.constructor.findOneAndUpdate(
+        { _id: this._id, __v: currentCart.__v },
+        {
+          $set: {
+            couponCode: undefined,
+            discount: 0,
+            lastUpdated: new Date()
+          }
+        },
+        { new: true, runValidators: true }
+      );
+      
+      if (updatedCart) {
+        Object.assign(this, updatedCart.toObject());
+        return this;
+      }
+      
+      throw new Error('Version conflict detected');
+    } catch (error) {
+      if ((error.message === 'Version conflict detected' || error.name === 'VersionError') && retries < maxRetries - 1) {
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 100 * retries));
+        continue;
+      }
+      throw error;
+    }
+  }
+  
+  throw new Error('Failed to remove coupon after multiple retries');
 };
 
 // Method to check if cart meets minimum order requirement

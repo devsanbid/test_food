@@ -7,7 +7,6 @@ import Notification from '@/models/Notification';
 export async function GET(request) {
   try {
     const user = await authenticate(request);
-    restaurantOnly(user);
     await connectDB();
     
     request.user = user;
@@ -136,7 +135,6 @@ export async function GET(request) {
 export async function PUT(request) {
   try {
     const user = await authenticate(request);
-    restaurantOnly(user);
     await connectDB();
     
     request.user = user;
@@ -263,7 +261,6 @@ export async function PUT(request) {
 export async function POST(request) {
   try {
     const user = await authenticate(request);
-    restaurantOnly(user);
     await connectDB();
     
     request.user = user;

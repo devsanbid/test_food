@@ -358,13 +358,19 @@ export async function PUT(request) {
 
         await order.save();
 
-        // Notify user
-        await Notification.create({
-          user: order.user._id,
-          type: 'order_status_updated',
-          title: 'Order Status Updated',
-          message: `Your order #${order.orderNumber} status has been updated to ${newStatus}.`,
-          data: { orderId: order._id, status: newStatus }
+        // Notify user asynchronously to avoid blocking the response
+        setImmediate(async () => {
+          try {
+            await Notification.create({
+              user: order.user._id,
+              type: 'order_status_updated',
+              title: 'Order Status Updated',
+              message: `Your order #${order.orderNumber} status has been updated to ${newStatus}.`,
+              data: { orderId: order._id, status: newStatus }
+            });
+          } catch (notificationError) {
+            console.error('Notification creation failed:', notificationError);
+          }
         });
 
         return NextResponse.json({
@@ -438,13 +444,19 @@ export async function POST(request) {
             
             await order.save();
             
-            // Notify user
-            await Notification.create({
-              user: order.user._id,
-              type: 'order_cancelled',
-              title: 'Order Cancelled',
-              message: `Your order #${order.orderNumber} has been cancelled. Reason: ${reason}`,
-              data: { orderId: order._id }
+            // Notify user asynchronously to avoid blocking the response
+            setImmediate(async () => {
+              try {
+                await Notification.create({
+                  user: order.user._id,
+                  type: 'order_cancelled',
+                  title: 'Order Cancelled',
+                  message: `Your order #${order.orderNumber} has been cancelled. Reason: ${reason}`,
+                  data: { orderId: order._id }
+                });
+              } catch (notificationError) {
+                console.error('Notification creation failed:', notificationError);
+              }
             });
             
             results.push({ orderId: order._id, success: true });
