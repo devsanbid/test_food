@@ -2,17 +2,6 @@ import mongoose from 'mongoose';
 import Notification from '../../src/models/Notification';
 
 describe('Notification Model', () => {
-  beforeAll(async () => {
-    await mongoose.connect('mongodb://localhost:27017/foodsewa_test');
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
-
-  beforeEach(async () => {
-    await Notification.deleteMany({});
-  });
 
   describe('Notification Schema Validation', () => {
     test('should create a valid notification', async () => {

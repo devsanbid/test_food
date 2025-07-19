@@ -2,17 +2,6 @@ import mongoose from 'mongoose';
 import Review from '../../src/models/Review';
 
 describe('Review Model', () => {
-  beforeAll(async () => {
-    await mongoose.connect('mongodb://localhost:27017/foodsewa_test');
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
-
-  beforeEach(async () => {
-    await Review.deleteMany({});
-  });
 
   describe('Review Schema Validation', () => {
     test('should create a valid review', async () => {

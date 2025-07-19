@@ -36,7 +36,6 @@ const reviewSchema = new mongoose.Schema({
     },
     overall: {
       type: Number,
-      required: [true, 'Overall rating is required'],
       min: [1, 'Rating must be at least 1'],
       max: [5, 'Rating cannot be more than 5']
     }
@@ -154,7 +153,7 @@ reviewSchema.index({ user: 1, order: 1 }, { unique: true });
 
 // Pre-save middleware to calculate overall rating
 reviewSchema.pre('save', function(next) {
-  if (this.isModified('rating.food') || this.isModified('rating.service') || this.isModified('rating.delivery')) {
+  if (this.isModified('rating.food') || this.isModified('rating.service') || this.isModified('rating.delivery') || this.isNew) {
     const ratings = [this.rating.food, this.rating.service];
     if (this.rating.delivery) {
       ratings.push(this.rating.delivery);

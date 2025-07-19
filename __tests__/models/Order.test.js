@@ -2,17 +2,6 @@ import mongoose from 'mongoose';
 import Order from '../../src/models/Order';
 
 describe('Order Model', () => {
-  beforeAll(async () => {
-    await mongoose.connect('mongodb://localhost:27017/foodsewa_test');
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
-
-  beforeEach(async () => {
-    await Order.deleteMany({});
-  });
 
   describe('Order Schema Validation', () => {
     test('should create a valid delivery order', async () => {
@@ -296,7 +285,8 @@ describe('Order Model', () => {
         payment: {
           method: 'card',
           amount: 19.24
-        }
+        },
+        estimatedPickupTime: new Date(Date.now() + 20 * 60 * 1000)
       };
 
       const order = new Order(orderData);

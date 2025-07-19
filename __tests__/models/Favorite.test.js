@@ -2,17 +2,6 @@ import mongoose from 'mongoose';
 import Favorite from '../../src/models/Favorite';
 
 describe('Favorite Model', () => {
-  beforeAll(async () => {
-    await mongoose.connect('mongodb://localhost:27017/foodsewa_test');
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
-
-  beforeEach(async () => {
-    await Favorite.deleteMany({});
-  });
 
   describe('Favorite Schema Validation', () => {
     test('should create a valid restaurant favorite', async () => {

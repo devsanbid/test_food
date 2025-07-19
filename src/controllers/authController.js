@@ -1,7 +1,7 @@
 import connectDB from '@/lib/db';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -137,8 +137,8 @@ export const forgotPassword = async (email) => {
       throw new Error('User not found with this email');
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const resetToken = randomBytes(32).toString('hex');
+    const resetPasswordToken = createHash('sha256').update(resetToken).digest('hex');
     const resetPasswordExpires = Date.now() + 10 * 60 * 1000;
 
     user.resetPasswordToken = resetPasswordToken;
@@ -167,7 +167,7 @@ export const resetPassword = async (resetToken, newPassword) => {
       throw new Error('Password must be at least 6 characters');
     }
 
-    const resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const resetPasswordToken = createHash('sha256').update(resetToken).digest('hex');
 
     const user = await User.findOne({
       resetPasswordToken,

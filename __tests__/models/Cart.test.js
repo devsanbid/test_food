@@ -2,17 +2,6 @@ import mongoose from 'mongoose';
 import Cart from '../../src/models/Cart';
 
 describe('Cart Model', () => {
-  beforeAll(async () => {
-    await mongoose.connect('mongodb://localhost:27017/foodsewa_test');
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
-
-  beforeEach(async () => {
-    await Cart.deleteMany({});
-  });
 
   describe('Cart Schema Validation', () => {
     test('should create a valid cart', async () => {

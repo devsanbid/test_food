@@ -2,17 +2,6 @@ import mongoose from 'mongoose';
 import Restaurant from '../../src/models/Restaurant';
 
 describe('Restaurant Model', () => {
-  beforeAll(async () => {
-    await mongoose.connect('mongodb://localhost:27017/foodsewa_test');
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
-
-  beforeEach(async () => {
-    await Restaurant.deleteMany({});
-  });
 
   describe('Restaurant Schema Validation', () => {
     test('should create a valid restaurant', async () => {

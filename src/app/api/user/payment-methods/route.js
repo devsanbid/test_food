@@ -3,7 +3,7 @@ import { authenticate } from '@/middleware/auth';
 import User from '@/models/User';
 import { connectDB } from '@/lib/mongodb';
 import mongoose from 'mongoose';
-import crypto from 'crypto';
+import { randomBytes, createCipher, createDecipher } from 'crypto';
 
 // Helper function to mask card number
 function maskCardNumber(cardNumber) {
@@ -14,10 +14,10 @@ function maskCardNumber(cardNumber) {
 // Helper function to encrypt sensitive data
 function encryptData(data) {
   const algorithm = 'aes-256-gcm';
-  const key = process.env.ENCRYPTION_KEY || crypto.randomBytes(32);
-  const iv = crypto.randomBytes(16);
+  const key = process.env.ENCRYPTION_KEY || randomBytes(32);
+  const iv = randomBytes(16);
   
-  const cipher = crypto.createCipher(algorithm, key);
+  const cipher = createCipher(algorithm, key);
   let encrypted = cipher.update(data, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   
@@ -30,9 +30,9 @@ function encryptData(data) {
 // Helper function to decrypt sensitive data
 function decryptData(encryptedData, iv) {
   const algorithm = 'aes-256-gcm';
-  const key = process.env.ENCRYPTION_KEY || crypto.randomBytes(32);
+  const key = process.env.ENCRYPTION_KEY || randomBytes(32);
   
-  const decipher = crypto.createDecipher(algorithm, key);
+  const decipher = createDecipher(algorithm, key);
   let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   
